@@ -1,0 +1,64 @@
+@startuml
+entity User {
+  id
+  username
+  email
+  password
+  register_date
+}
+
+entity Game {
+  id
+  current_move
+  time_start
+  time_end
+}
+
+entity Player {
+  id
+  color
+  health
+  hand_limit
+  is_alive
+  turn
+}
+
+entity Card {
+  id
+  title
+  creature
+  strength
+  power
+  cost
+  winning_points
+}
+
+entity Type {
+  id
+  title
+}
+
+entity Image {
+  id
+  title
+  file_path
+}
+
+entity Deck {
+  id
+  type
+  is_open
+}
+
+User ||--o{ Player : is
+Game ||--o{ Player : participates
+
+Player ||--o{ Deck : owns
+Deck }o--o{ Card : contains
+
+Card }o--|| Type : has
+Card ||--o{ Image : has
+
+Player ||--|| Game : wins
+
+@enduml

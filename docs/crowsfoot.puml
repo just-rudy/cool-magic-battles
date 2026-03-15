@@ -1,0 +1,72 @@
+@startuml
+
+entity Users {
+  +id : int
+  username : text
+  email : text
+  password : text
+  register_date : datetime
+}
+
+entity Games {
+  +id : int
+  current_move : int
+  time_start : datetime
+  time_end : datetime
+}
+
+entity Players {
+  +id : int
+  game_id : int
+  user_id : int
+  color : text
+  health : int
+  hand_limit : int
+  is_alive : bool
+  turn : int
+}
+
+entity Cards {
+  +id : int
+  title : text
+  creature : text
+  strength : int
+  power : int
+  cost : int
+  winning_points : int
+}
+
+entity Types {
+  +id : int
+  title : text
+}
+
+entity Images {
+  +id : int
+  title : text
+  file_path : text
+}
+
+entity Decks {
+  +id : int
+  type : text
+  is_open : bool
+}
+
+entity DecksCards {
+  deck_id : int
+  card_id : int
+  position : int
+}
+
+Users ||--o{ Players
+Games ||--o{ Players
+Players ||--o{ Decks
+Decks ||--o{ DecksCards
+Cards ||--o{ DecksCards
+Types ||--o{ Cards
+Images ||--o{ Cards
+
+Players ||--o| Games
+
+@enduml
