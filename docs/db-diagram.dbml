@@ -49,7 +49,7 @@ Table Decks {
 
 Table Types {
   id integer [pk, increment, unique]
-  title text
+  action text
   color text
 }
 

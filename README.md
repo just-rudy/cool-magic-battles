@@ -72,3 +72,27 @@
 ## BPMN (draft)
 ![bpmn](img/bpmn.png)
 > [png](img/bpmn.png)
+
+# Реализация
+**Тип приложения**: MPA  
+
+**Технологический стек**:
+- Язык: Python 3.11
+- Фреймворк: FastAPI
+- База данных: PostgreSQL
+- ORNM: SQLAlchemy
+- Типизация: mypy
+- Линтер: ruff
+
+## L1 и L2 нотация С4
+
+## L3 нотация С4
+
+## L4 нотация С4
+
+## Диаграммы последовательностей в нотации UML для подготовленных в предыдущей ЛР BPMN-диаграмм
+
+## Диаграмма БД с учетом выбранной СУБД в нотации DBML
+
+![img dbml](img/dbml.png)
+> [png](img/dbml.png) / [dbml](docs/db-diagram.dbml)
