@@ -35,7 +35,8 @@ entity Card {
 
 entity Type {
   id
-  title
+  action
+  color
 }
 
 entity Image {
