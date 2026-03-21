@@ -1,0 +1,76 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+
+Table Users {
+  id integer [pk, increment, unique]
+  username text [unique]
+  email text [unique]
+  password text
+  register_date datetime
+}
+
+Table Cards {
+  id integer [pk, increment, unique]
+  title text
+  creature text
+  strength integer
+  power integer [default: 1]
+  cost integer [default: 5]
+  card_type integer
+  image_id integer
+  winning_points integer [default: 0]
+}
+
+Table Players {
+  id integer [pk, increment, unique]
+  game_id integer
+  player_id integer
+  color text
+  health integer [default: 20]
+  hand_limit integer [default: 5]
+  if_alive boolean [default: true]
+  turn integer
+}
+
+Table Games {
+  id integer [pk, increment, unique]
+  current_move integer
+  time_start datetime
+  time_end datetime
+  winner integer
+}
+
+Table Decks {
+  id integer [pk, increment, unique]
+  type text [default: "close_bank"]
+  if_open boolean [default: false]
+  owner_id integer
+}
+
+Table Types {
+  id integer [pk, increment, unique]
+  title text
+  color text
+}
+
+Table DecksCards {
+  id integer [pk, increment, unique]
+  deck_id integer
+  card_id integer
+  position integer
+}
+
+Table Images {
+  id integer [pk, increment, unique]
+  title text
+  file text
+}
+
+Ref: Cards.card_type > Types.id
+Ref: Cards.image_id > Images.id
+Ref: Players.game_id > Games.id
+Ref: Players.player_id > Users.id
+Ref: Games.winner > Players.id
+Ref: Decks.owner_id > Players.id
+Ref: DecksCards.deck_id > Decks.id
+Ref: DecksCards.card_id > Cards.id
