@@ -1,0 +1,25 @@
+@startuml
+actor Player as player
+participant "WebUI" as web
+participant "API Controller" as api
+participant "Game Logic" as game
+participant "Game State Machine" as state
+participant "Data Access Layer" as data
+
+player -> web: нажимает "завершить ход"
+web -> api: endTurn(gameId)
+api -> game: end_turn(gameId, playerId)
+
+game -> data: get_game(gameId)
+data --> game: game: GameSession
+
+game -> state: next_turn(game)
+state --> game: updated game
+
+game -> data: save_game(game)
+
+game -> api: success response
+api --> web: success response
+web --> player: обновить интерфейс
+
+@enduml

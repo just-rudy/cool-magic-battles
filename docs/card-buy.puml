@@ -1,0 +1,37 @@
+@startuml
+actor Player as player
+participant "WebUI" as web
+participant "API Controller" as api
+participant "Game Logic" as game
+participant "Game State Machine" as state
+participant "Card Logic" as card
+participant "Data Access Layer" as data
+
+player -> web: нажимает "купить карту"
+web -> api: buyCard(gameId, cardId)
+api -> game: buy_card(gameId, playerId, cardId)
+
+game -> data: get_game(gameId)
+data --> game: game: GameSession
+
+game -> state: validate_turn(game, playerId)
+state --> game: if_valid (ok/error)
+
+alt valid turn 
+    game -> data: get_card(cardId)
+    data --> game: card: Card
+
+    game -> state: validate_card_purchase(playerId, card)
+    state --> game: if_valid (ok/not enough )
+
+    alt valid purchase
+
+    else invalid purchase
+    end
+
+else invalid turn
+    game --> api: error response
+    api --> web: error response
+    web --> player: показать сообщение об ошибке
+end
+@enduml
