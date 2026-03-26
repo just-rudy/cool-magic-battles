@@ -13,12 +13,12 @@ Table Cards {
   id integer [pk, increment, unique]
   title text
   creature text
-  strength integer
-  power integer [default: 1]
-  cost integer [default: 5]
+  echo integer [default: 1]
+  cost integer [default: 3]
+  power integer [default: 2]
   card_type integer
   image_id integer
-  winning_points integer [default: 0]
+  cool_points integer [default: 0]
 }
 
 Table Players {
@@ -28,28 +28,32 @@ Table Players {
   color text
   health integer [default: 20]
   hand_limit integer [default: 5]
-  if_alive boolean [default: true]
+  base_echo integer [default: 0]
+  memos integer [default: 0]
   turn integer
 }
 
 Table Games {
   id integer [pk, increment, unique]
   current_move integer
+  memos integer
   time_start datetime
-  time_end datetime
-  winner integer
+  time_end datetime [null]
+  winner integer [null]
 }
 
 Table Decks {
   id integer [pk, increment, unique]
-  type text [default: "close_bank"]
+  type text [default: "close_bank"] // deck, hand, table, discard, bank и т.д.
   if_open boolean [default: false]
-  owner_id integer
+  owner_id integer [null]
 }
 
 Table Types {
   id integer [pk, increment, unique]
-  action text
+  action text [default: "draw"]       // attack, defence, draw, bonus и т.д.
+  def_pattern text [null]             // discard / top_deck / null
+  if_permanent boolean [default: false]
   color text
 }
 
@@ -63,14 +67,20 @@ Table DecksCards {
 Table Images {
   id integer [pk, increment, unique]
   title text
-  file text
+  file text [null]
 }
+
+// --- Связи ---
 
 Ref: Cards.card_type > Types.id
 Ref: Cards.image_id > Images.id
+
 Ref: Players.game_id > Games.id
 Ref: Players.player_id > Users.id
+
 Ref: Games.winner > Players.id
+
 Ref: Decks.owner_id > Players.id
+
 Ref: DecksCards.deck_id > Decks.id
 Ref: DecksCards.card_id > Cards.id
