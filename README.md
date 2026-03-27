@@ -110,9 +110,11 @@
 
 ## L4 нотация С4
 
+### Слой бизнес-логики
 ![business-logic](img/c4-l4-business-logic.png)
 > [png](img/c4-l4-business-logic.png) / [puml](docs/c4-l4-business-logic.puml)
 
+### Слой доступа к данным
 ![data-access](img/c4-l4-data-access.png)
 > [png](img/c4-l4-data-access.png) / [puml](docs/c4-l4-data-access.puml)
 
