@@ -22,11 +22,21 @@ alt valid turn
     data --> game: card: Card
 
     game -> state: validate_card_purchase(playerId, card)
-    state --> game: if_valid (ok/not enough )
+    state --> game: if_valid (ok/not enough echo)
 
     alt valid purchase
+        game -> card: add_card_to_player(player, card)
+        card --> game: updated player
 
+        game -> data: save_game(game)
+        
+        game --> api: success response
+        api --> web: success response
+        web --> player: обновить интерфейс
     else invalid purchase
+        game --> api: error response
+        api --> web: error response
+        web --> player: показать сообщение об ошибке
     end
 
 else invalid turn

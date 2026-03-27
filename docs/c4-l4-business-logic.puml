@@ -1,0 +1,124 @@
+@startuml
+title Business Logic Component - Class Diagram
+
+skinparam classAttributeIconSize 0
+
+package "Business Logic" {
+
+  class GameLogic {
+    + start_game(game_id)
+    + start_turn(game_id, player_id)
+    + end_turn(game_id, player_id)
+    + buy_card(game_id, player_id, card_id)
+    + play_card(game_id, player_id, card_id)
+    + defend(game_id, player_id, card_id)
+    + handle_damage(game_id, player_id, damage)
+    + initialize_player_decks(game)
+    + draw_hand(player)
+    + cleanup_turn(player)
+  }
+
+  class CardLogic {
+    +validate_purchase(player: Player, card: Card): bool
+    +can_be_played(player: Player, card: Card): bool
+    +apply_effect(card: Card, context: GameContext): void
+  }
+
+  class DeckService {
+    +draw(deck: Deck, number: int): List[Card]
+    +shuffle(deck: Deck): Deck
+    +merge(deck_a: Deck, deck_b: Deck): Deck
+    +is_empty(deck: Deck): bool
+  }
+
+  class MarketService {
+    +get_market(game: Game): Market
+    +buy_card(game: Game, player: Player, card_id: UUID): void
+    +refresh_market(game: Game): void
+  }
+
+  class GameStateManager {
+    +validate_turn(game: Game, player_id: UUID): bool
+    +next_turn(game: Game): void
+    +handle_player_death(game: Game, player: Player): void
+    +check_game_end(game: Game): void
+    +end_game(game: Game, winner_id: UUID): void
+  }
+  
+
+}
+
+package "Domain Models" {
+
+  class Game {
+    +id: UUID
+    +status: GameStatus
+    +current_player_id: UUID
+    +memoes_left: int
+    +start_time: datetime
+    +end_time: datetime
+    +winner_id: UUID
+  }
+
+  class Player {
+    +id: UUID
+    +username: string
+    +color: string
+    +health: int
+    +hand_limit: int
+    +base_echo: int
+    +deck: Deck
+    +hand: Deck
+    +discard: Deck
+    +table: Deck
+    +memos: int
+    +turn_order: int
+  }
+
+  class Deck {
+    +cards: List[Card]
+    
+  }
+
+  class Card{
+    +id: UUID
+    +title: string
+    +creature: string
+    +type: CardType
+    +power: int
+    +cost: int
+    +echo: int
+    +image_id: UUID
+    +cool_points: int
+  }
+
+  class Market {
+    +open_cards: List[Card]
+    +deck: List[Card]
+  }
+
+}
+
+' --- Relationships ---
+
+GameLogic --> DeckService
+GameLogic --> CardLogic
+GameLogic --> MarketService
+GameLogic --> GameStateManager
+
+MarketService --> DeckService
+
+GameLogic ..> Game
+GameLogic ..> Player
+GameLogic ..> Card
+
+MarketService ..> Market
+MarketService ..> Card
+
+GameStateManager ..> Game
+GameStateManager ..> Player
+
+Player --> Deck
+Deck --> Card
+
+@enduml

@@ -17,7 +17,7 @@
 | Hearthstone          | ✔                  | ✖              | ✖                     |
 | Dominion Online      | ✔                  | ✔              | ✖                     |
 | Предлагаемая система | ✔                  | ✔              | ✔                     |
-   
+
 **Актуальность** проекта заключается в том, что настольная игра пользуется популярностью, но не всегда есть возможность разложить карты и полноценно сыграть. Компьютерная версия дает возможность играть "на коленке" без привязки к столу или колоде.
 
 ## Роли (акторы)
@@ -29,6 +29,9 @@
 
 ![actors диаграмма](img/actors.png)
 > [png](img/actors.png) / [graphml](docs/actors.graphml) / [puml](docs/actors.puml)
+
+## Игровые аттрибуты
+>[памятка с пояснением игровых аттрибутов](./attributes.md)
 
 ## ER-модель
 
@@ -68,7 +71,11 @@
     - В случае ничьи по очкам крутости, побеждает игрок с наибольшим количеством купленных карт
     - В случае ничьи по очкам крутости и количеству купленных карт, побеждает игрок с наибольшим количестом карт случайно выбранного типа
     - Если опять ничья, то победитель определяется путем сражения между игроками (например, камнь-ножницы-бумага или дуэль на мечах)
-   
+
+## Примерный КА состояний игры
+![КА состояний игры](img/ka.png)
+> [png](img/ka.png)
+
 ## BPMN (draft)
 ![bpmn](img/bpmn.png)
 > [png](img/bpmn.png)
@@ -100,13 +107,29 @@
 ![L3](img/L3C4.png)
 > [png](img/L3C4.png) / [drawio-C4](docs/C4.drawio)
 
-<!--
+
 ## L4 нотация С4
 
-![L4](img/L3C4.png)
-> [png](img/L4C4.png) / [drawio-C4](docs/C4.drawio)
--->
+![business-logic](img/c4-l4-business-logic.png)
+> [png](img/c4-l4-business-logic.png) / [puml](docs/c4-l4-business-logic.puml)
+
+![data-access](img/c4-l4-data-access.png)
+> [png](img/c4-l4-data-access.png) / [puml](docs/c4-l4-data-access.puml)
+
 ## Диаграммы последовательностей в нотации UML для подготовленных в предыдущей ЛР BPMN-диаграмм
+
+### Розыгрыш игроком карты
+![card-play](img/card-play-uml-seq.png)
+> [png](img/card-play-uml-seq.png) / [puml](docs/card-play.puml)
+
+### Завершение хода игрока
+![turn-end](img/turn-end-uml-seq.png)
+> [png](img/turn-end-uml-seq.png) / [puml](docs/turn-end.puml)
+
+### Покупка карты
+![card-buy](img/card-buy-uml-seq.png)
+> [png](img/card-buy-uml-seq.png) / [puml](docs/card-buy.puml)
+
 
 ## Диаграмма БД с учетом выбранной СУБД в нотации DBML
 

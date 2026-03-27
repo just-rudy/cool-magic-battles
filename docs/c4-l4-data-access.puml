@@ -1,0 +1,141 @@
+@startuml
+title Data Access Component - Class Diagram
+
+skinparam classAttributeIconSize 0
+
+package "Data Access Layer" as DAL {
+
+  class IRepository <<interface>> {
+    +get_by_id(id: UUID)
+    +get_all()
+    +save(entity)
+    +delete(id: UUID)
+  }
+
+  class UserRepository {
+    +get_by_id(id: UUID)
+    +get_by_username(username: string)
+    +save(entity)
+  }
+
+  class GameRepository {
+    +get_by_id(id: UUID)
+    +save(entity)
+    +update(entity)
+  }
+
+  class PlayerRepository {
+    +get_by_id(id: UUID)
+    +get_by_game(game_id: UUID)
+    +save(entity)
+  }
+
+  class CardRepository {
+    +get_by_id(id: UUID)
+    +get_all()
+  }
+
+  class MarketRepository {
+    +get_by_game(game_id: UUID)
+    +save(entity)
+    +update(entity)
+  }
+
+}
+
+package "Database Entities (Persistence Models)" {
+
+  class UserEntity {
+    +id: UUID
+    +username: string
+    +email: string
+    +password_hash: string
+    +register_date: datetime
+    +color: string
+  }
+
+  class GameEntity {
+    +id: UUID
+    +status: string
+    +current_player_id: UUID
+    +start_time: datetime
+    +end_time: datetime
+    +winner_id: UUID
+    +memos: int
+  }
+
+  class PlayerEntity {
+    +id: UUID
+    +user_id: UUID
+    +game_id: UUID
+    +health: int
+    +hand_limit: int
+    +base_echo: int
+    +memos: int
+    +turn_order: int
+  }
+
+  class CardEntity {
+    +id: UUID
+    +title: string
+    +creature: string
+    +type: string
+    +power: int
+    +cost: int
+    +echo: int
+    +image_id: UUID
+    +cool_points: int
+  }
+
+  class DeckEntity {
+    +id: UUID
+    +owner_id: UUID
+    +type: string  ' deck | hand | discard | table | market
+  }
+
+  class DeckCardEntity {
+    +deck_id: UUID
+    +card_id: UUID
+    +position: int
+  }
+
+  class MarketEntity {
+    +id: UUID
+    +game_id: UUID
+  }
+
+  class MarketCardEntity {
+    +market_id: UUID
+    +card_id: UUID
+    +is_open: bool
+    +position: int
+  }
+
+}
+
+' --- Relationships ---
+
+UserRepository ..|> IRepository
+GameRepository ..|> IRepository
+PlayerRepository ..|> IRepository
+CardRepository ..|> IRepository
+MarketRepository ..|> IRepository
+
+PlayerEntity --> UserEntity
+PlayerEntity --> GameEntity
+
+DeckEntity --> PlayerEntity
+DeckCardEntity --> DeckEntity
+DeckCardEntity --> CardEntity
+
+MarketEntity --> GameEntity
+MarketCardEntity --> MarketEntity
+MarketCardEntity --> CardEntity
+
+UserRepository ..> UserEntity
+GameRepository ..> GameEntity
+PlayerRepository ..> PlayerEntity
+CardRepository ..> CardEntity
+MarketRepository ..> MarketEntity
+
+@enduml
