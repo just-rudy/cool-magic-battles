@@ -52,7 +52,7 @@ Table Decks {
 Table Types {
   id integer [pk, increment, unique]
   action text [default: "draw"]       // attack, defence, draw, bonus и т.д.
-  def_pattern text [null]             // discard / top_deck / null
+  usage_pattern text [default: "regular"]             // regular / discard completely / discard / top_deck
   if_permanent boolean [default: false]
   color text
 }
