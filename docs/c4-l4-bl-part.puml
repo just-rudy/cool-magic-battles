@@ -1,0 +1,158 @@
+@startuml c4-l4-bl-part.puml
+title L4 (Code) - Business Logic Component
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+package "Business Logic Component" {
+
+  class GameLogic {
+    - _repo: GameRepository
+    - _us_repo: UserRepository
+    - _card_logic: CardLogic
+    - _deck_service: DeckService
+    - _state: GameStateManager
+
+    + create_game(host_id: UUID): Game
+    + start_game(game_id: UUID): void
+    + order_player_turns(game: Game): Game
+    + add_player(game_id: UUID, user_id: UUID): Player
+    + buy_card(game_id: UUID, player_id: UUID, card_id: UUID): void
+    + play_card(game_id: UUID, player_id: UUID, card_id: UUID): void
+    + end_turn(game_id: UUID, player_id: UUID): void
+
+    - _get_player(game: Game, player_id: UUID): Player
+    - _get_card(deck: Deck, card_id: UUID): Card
+  }
+
+  class CardLogic {
+    + can_purchase(player: Player, card: Card): bool
+    + can_be_played(player: Player, card: Card): bool
+  }
+
+  class DeckService {
+    + draw(deck: Deck, num: int): list[Card]
+    + shuffle(deck: Deck): void
+    + is_empty(deck: Deck): bool
+  }
+
+  class GameStateManager {
+    + validate_turn(game: Game, player_id: UUID): bool
+    + next_turn(game: Game): void
+  }
+}
+
+package "Interfaces" {
+
+  interface GameRepository {
+    + get(game_id: UUID): Game
+    + save(game: Game): void
+  }
+
+  interface UserRepository {
+    + get(user_id: UUID): User
+  }
+}
+
+package "Domain Entities" {
+
+  class Game {
+    + id: UUID
+    + host_id: UUID
+    + status: GameStatus
+    + players: list[Player]
+    + current_turn: int
+    + current_player_id: UUID?
+    + market_deck: Deck
+    + game_deck: Deck
+    + banish_deck: Deck
+  }
+
+  class Player {
+    + id: UUID
+    + user_id: UUID
+    + nickname: str
+    + turn_order: int
+    + health: int
+    + base_echo: int
+    + cur_echo: int
+    + hand_size: int
+    + draw_deck: Deck
+    + hand_deck: Deck
+    + table_deck: Deck
+    + discard_deck: Deck
+  }
+
+  class Deck {
+    + id: UUID
+    + type: DeckType
+    + if_open: bool
+    + cards: list[Card]
+  }
+
+  class Card {
+    + id: UUID
+    + title: str
+    + creature: str
+    + power: int
+    + echo: int
+    + cost: int
+  }
+
+  class User {
+    + id: UUID
+    + username: str
+  }
+}
+
+package "Enums" {
+
+  enum GameStatus {
+    CREATED
+    IN_PROGRESS
+    FINISHED
+  }
+
+  enum DeckType {
+    DRAW
+    HAND
+    TABLE
+    DISCARD
+    BANISH
+    MARKET
+  }
+}
+
+GameLogic ..> GameRepository : uses
+GameLogic ..> UserRepository : uses
+GameLogic ..> CardLogic : uses
+GameLogic ..> DeckService : uses
+GameLogic ..> GameStateManager : uses
+
+GameRepository ..> Game
+UserRepository ..> User
+
+CardLogic ..> Player
+CardLogic ..> Card
+
+DeckService ..> Deck
+DeckService ..> Card
+
+GameStateManager ..> Game
+
+Game "1" *-- "0..*" Player
+Game "1" *-- "1" Deck : market_deck
+Game "1" *-- "1" Deck : game_deck
+Game "1" *-- "1" Deck : banish_deck
+
+Player "1" *-- "1" Deck : draw_deck
+Player "1" *-- "1" Deck : hand_deck
+Player "1" *-- "1" Deck : table_deck
+Player "1" *-- "1" Deck : discard_deck
+
+Deck "1" *-- "0..*" Card
+Game ..> GameStatus
+Deck ..> DeckType
+
+@enduml

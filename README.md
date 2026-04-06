@@ -136,3 +136,8 @@
 ![img dbml](img/dbml.png)
 > [png](img/dbml.png) / [dbml](docs/db-diagram.dbml)
 
+
+## Диаграмма реализации абстрагированного компонента бизнес-логики
+
+![business-logic-minimal](img/c4-l4-bl-part.png)
+> [png](img/c4-l4-bl-part.png) / [puml](docs/c4-l4-bl-part.puml)
