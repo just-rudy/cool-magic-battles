@@ -2,6 +2,14 @@
 \usepackage{longtable}
 \bibliography{biblio}
 
+% Переопределение формата даты (добавляем ведущие нули)
+\DeclareFieldFormat{urldate}{%
+	(дата обращения: %
+	\ifnum\thefield{urlday}<10 0\fi\thefield{urlday}.%
+	\ifnum\thefield{urlmonth}<10 0\fi\thefield{urlmonth}.%
+	\thefield{urlyear})%
+}
+
 \begin{document}
 
 \makecourseworktitle{ИНФОРМАТИКА И СИСТЕМЫ УПРАВЛЕНИЯ}{ИНФОРМАЦИОННОЕ ОБЕСПЕЧЕНИЕ ЭВМ И ИНФОРМАЦИОННЫЕ ТЕХНОЛОГИИ}{Разработка базы данных для онлайн-версии
