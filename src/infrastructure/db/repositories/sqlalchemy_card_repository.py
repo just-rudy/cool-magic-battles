@@ -13,7 +13,7 @@ from infrastructure.db.mappers.card_mapper import CardMapper
 from infrastructure.db.models.card_model import CardModel
 
 
-class SQLAlchemyCardRepository(CardRepository):
+class SqlAlchemyCardRepository(CardRepository):
     def __init__(self, session: Session) -> None:
         self._session = session
 
