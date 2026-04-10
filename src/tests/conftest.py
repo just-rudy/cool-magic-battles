@@ -102,7 +102,7 @@ def make_player(make_deck: Callable[..., Deck]) -> Callable[..., Player]:
 def make_game(make_deck: Callable[..., Deck]) -> Callable[..., Game]:
     def _make_game(
         *,
-        host_id: UUID,
+        host_user_id: UUID,
         status: GameStatus = GameStatus.CREATED,
         players: list[Player] | None = None,
         current_turn: int = 0,
@@ -113,7 +113,7 @@ def make_game(make_deck: Callable[..., Deck]) -> Callable[..., Game]:
     ) -> Game:
         return Game(
             id=uuid4(),
-            host_id=host_id or uuid4(),
+            host_user_id=host_user_id or uuid4(),
             status=status,
             players=players or [],
             current_turn=current_turn,

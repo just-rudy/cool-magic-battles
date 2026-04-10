@@ -14,7 +14,7 @@ package "Business Logic Component" {
     - _deck_service: DeckService
     - _state: GameStateManager
 
-    + create_game(host_id: UUID): Game
+    + create_game(host_user_id: UUID): Game
     + start_game(game_id: UUID): void
     + order_player_turns(game: Game): Game
     + add_player(game_id: UUID, user_id: UUID): Player
@@ -59,7 +59,7 @@ package "Domain Entities" {
 
   class Game {
     + id: UUID
-    + host_id: UUID
+    + host_user_id: UUID
     + status: GameStatus
     + players: list[Player]
     + current_turn: int

@@ -39,8 +39,8 @@ class GameLogic:
                 return card
         raise ValueError("Card not in deck")
 
-    def create_game(self, host_id: UUID) -> Game:
-        game = Game(id=uuid4(), host_id=host_id)
+    def create_game(self, host_user_id: UUID) -> Game:
+        game = Game(id=uuid4(), host_user_id=host_user_id)
         self._repo.save(game)
         return game
 

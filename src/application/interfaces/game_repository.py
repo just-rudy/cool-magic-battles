@@ -6,8 +6,16 @@ from domain.entities.game import Game
 class GameRepository(ABC):
     @abstractmethod
     def save(self, game: Game) -> None:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def get(self, game_id: UUID) -> Game:
-        pass
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete(self, game_id: UUID) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def exists(self, game_id: UUID) -> bool:
+        raise NotImplementedError

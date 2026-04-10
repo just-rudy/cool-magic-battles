@@ -51,7 +51,7 @@ def test_get_player_returns_player_from_game(
     logic, *_ = game_logic
     player = make_player()
     other_player = make_player()
-    game = make_game(host_id=uuid4(), players=[player, other_player])
+    game = make_game(host_user_id=uuid4(), players=[player, other_player])
 
     result = logic._get_player(game, player.id)
 
@@ -63,7 +63,7 @@ def test_get_player_raises_error_when_player_not_found_game_empty(
     make_game: Callable[..., Game],
 ) -> None:
     logic, *_ = game_logic
-    game = make_game(host_id=uuid4(), players=[])
+    game = make_game(host_user_id=uuid4(), players=[])
 
     with pytest.raises(ValueError, match="Player not found in game"):
         logic._get_player(game, uuid4())
@@ -77,7 +77,7 @@ def test_get_player_raises_error_when_player_not_found(
     logic, *_ = game_logic
     player = make_player()
     other_player = make_player()
-    game = make_game(host_id=uuid4(), players=[other_player])
+    game = make_game(host_user_id=uuid4(), players=[other_player])
 
     with pytest.raises(ValueError, match="Player not found in game"):
         logic._get_player(game, player_id=player.id)
@@ -126,11 +126,11 @@ def test_create_game_creates_and_saves_game(
     game_logic: tuple[GameLogic, Mock, Mock, Mock, Mock, Mock],
 ) -> None:
     logic, game_repository, *_ = game_logic
-    host_id = uuid4()
+    host_user_id = uuid4()
 
-    game = logic.create_game(host_id)
+    game = logic.create_game(host_user_id)
 
-    assert game.host_id == host_id
+    assert game.host_user_id == host_user_id
     game_repository.save.assert_called_once_with(game)
 
 
@@ -144,7 +144,7 @@ def test_order_player_turns_sets_turn_order_in_shuffled_order(
     p1 = make_player(nickname="zeta")
     p2 = make_player(nickname="alpha")
     p3 = make_player(nickname="gamma")
-    game = make_game(host_id=uuid4(), players=[p1, p2, p3])
+    game = make_game(host_user_id=uuid4(), players=[p1, p2, p3])
 
     def fake_shuffle(players: list[Player]) -> None:
         players[:] = [p2, p3, p1]
@@ -169,7 +169,7 @@ def test_start_game_sets_in_progress_orders_players_and_saves(
 
     p1 = make_player(nickname="b")
     p2 = make_player(nickname="a")
-    game = make_game(host_id=uuid4(), players=[p1, p2], status=GameStatus.CREATED)
+    game = make_game(host_user_id=uuid4(), players=[p1, p2], status=GameStatus.CREATED)
     game_repository.get.return_value = game
 
     called = {"value": False}
@@ -199,7 +199,7 @@ def test_start_game_raises_error_if_already_in_progress(
     make_game: Callable[..., Game],
 ) -> None:
     logic, game_repository, *_ = game_logic
-    game = make_game(host_id=uuid4(), status=GameStatus.IN_PROGRESS)
+    game = make_game(host_user_id=uuid4(), status=GameStatus.IN_PROGRESS)
     game_repository.get.return_value = game
 
     with pytest.raises(ValueError, match="Game already in progress"):
@@ -215,7 +215,7 @@ def test_add_player_creates_player_and_saves_game(
     user_id = uuid4()
     user = make_user(username="new_user")
     user.id = user_id
-    game = make_game(host_id=uuid4(), players=[])
+    game = make_game(host_user_id=uuid4(), players=[])
 
     game_repository.get.return_value = game
     user_repository.get.return_value = user
@@ -236,7 +236,7 @@ def test_add_player_raises_error_if_user_already_in_game(
     logic, game_repository, *_ = game_logic
     user_id = uuid4()
     existing_player = make_player(user_id=user_id)
-    game = make_game(host_id=uuid4(), players=[existing_player])
+    game = make_game(host_user_id=uuid4(), players=[existing_player])
     game_repository.get.return_value = game
 
     with pytest.raises(ValueError, match="User is already in the game"):
@@ -255,7 +255,7 @@ def test_buy_card_raises_error_when_game_not_in_progress(
     card = make_card()
     market_deck = make_deck(cards=[card])
     game = make_game(
-        host_id=uuid4(),
+        host_user_id=uuid4(),
         players=[player],
         status=GameStatus.CREATED,
         current_player_id=player.id,
@@ -279,7 +279,7 @@ def test_buy_card_raises_error_when_not_players_turn(
     card = make_card()
     market_deck = make_deck(cards=[card])
     game = make_game(
-        host_id=uuid4(),
+        host_user_id=uuid4(),
         players=[player],
         status=GameStatus.IN_PROGRESS,
         market_deck=market_deck,
@@ -303,7 +303,7 @@ def test_buy_card_raises_error_when_card_cant_be_bought(
     card = make_card(cost=3)
     market_deck = make_deck(cards=[card])
     game = make_game(
-        host_id=uuid4(),
+        host_user_id=uuid4(),
         players=[player],
         status=GameStatus.IN_PROGRESS,
         current_player_id=player.id,
@@ -329,7 +329,7 @@ def test_buy_card_moves_card_from_market_to_discard_and_decreases_echo(
     card = make_card(cost=3)
     market_deck = make_deck(cards=[card])
     game = make_game(
-        host_id=uuid4(),
+        host_user_id=uuid4(),
         players=[player],
         status=GameStatus.IN_PROGRESS,
         current_player_id=player.id,
@@ -359,7 +359,7 @@ def test_play_card_raises_error_when_game_not_in_progress(
     card = make_card()
     market_deck = make_deck(cards=[card])
     game = make_game(
-        host_id=uuid4(),
+        host_user_id=uuid4(),
         players=[player],
         status=GameStatus.CREATED,
         current_player_id=player.id,
@@ -383,7 +383,7 @@ def test_play_card_raises_error_when_not_players_turn(
     card = make_card()
     market_deck = make_deck(cards=[card])
     game = make_game(
-        host_id=uuid4(),
+        host_user_id=uuid4(),
         players=[player],
         status=GameStatus.IN_PROGRESS,
         market_deck=market_deck,
@@ -407,7 +407,7 @@ def test_play_card_raises_error_when_card_cant_be_played(
     hand_deck = make_deck(cards=[card])
     player = make_player(hand_deck=hand_deck)
     game = make_game(
-        host_id=uuid4(),
+        host_user_id=uuid4(),
         players=[player],
         status=GameStatus.IN_PROGRESS,
         current_player_id=player.id,
@@ -434,7 +434,7 @@ def test_play_card_moves_card_from_hand_to_table_current_expected_domain_behavio
     player.hand_deck.cards.append(card)
 
     game = make_game(
-        host_id=uuid4(),
+        host_user_id=uuid4(),
         players=[player],
         status=GameStatus.IN_PROGRESS,
         current_player_id=player.id,
@@ -457,7 +457,7 @@ def test_end_turn_raises_error_when_not_players_turn(
 ) -> None:
     logic, game_repository, _, _, _, state_manager = game_logic
     player = make_player()
-    game = make_game(host_id=uuid4(), players=[player])
+    game = make_game(host_user_id=uuid4(), players=[player])
     game_repository.get.return_value = game
     state_manager.validate_turn.side_effect = ValueError("Not your turn")
 
@@ -483,7 +483,9 @@ def test_end_turn_discards_cards_draws_new_hand_calls_next_turn_and_saves(
     player.draw_deck.cards = draw_cards.copy()
     player.discard_deck.cards = []
 
-    game = make_game(host_id=uuid4(), players=[player], current_player_id=player.id)
+    game = make_game(
+        host_user_id=uuid4(), players=[player], current_player_id=player.id
+    )
     game_repository.get.return_value = game
     state_manager.validate_turn.return_value = True
     deck_service.draw.return_value = draw_cards.copy()
@@ -520,7 +522,9 @@ def test_end_turn_shuffles_discard_into_draw_deck_when_cards_are_insufficient(
     player.hand_deck.cards = hand_cards.copy()
     player.table_deck.cards = table_cards.copy()
 
-    game = make_game(host_id=uuid4(), players=[player], current_player_id=player.id)
+    game = make_game(
+        host_user_id=uuid4(), players=[player], current_player_id=player.id
+    )
     game_repository.get.return_value = game
     state_manager.validate_turn.return_value = True
     deck_service.draw.return_value = new_hand.copy()

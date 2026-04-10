@@ -8,7 +8,7 @@ from domain.enums import GameStatus
 @dataclass
 class Game:
     id: UUID
-    host_id: UUID
+    host_user_id: UUID
     status: GameStatus = GameStatus.CREATED
     players: list[Player] = field(default_factory=list)
     current_turn: int = 0
