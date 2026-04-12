@@ -19,11 +19,11 @@ class SqlAlchemyCardRepository(CardRepository):
 
     def save(self, card: Card) -> None:
         if not card.title.strip():
-            raise EntityValidationError("err: card title must not be empty")
+            raise EntityValidationError("card title must not be empty")
         if not card.creature.strip():
-            raise EntityValidationError("err: card creature must not be empty")
+            raise EntityValidationError("card creature must not be empty")
         if card.cost < 0:
-            raise EntityValidationError("err: card cost must be non-negative")
+            raise EntityValidationError("card cost must be non-negative")
         try:
             model = self._session.get(CardModel, card.id)
             if model is None:
@@ -40,34 +40,34 @@ class SqlAlchemyCardRepository(CardRepository):
         except IntegrityError as exc:
             self._session.rollback()
             raise PersistenceError(
-                "err: failed to save card - integrity constraint violated"
+                "failed to save card - integrity constraint violated"
             ) from exc
         except SQLAlchemyError as exc:
             self._session.rollback()
-            raise PersistenceError("err: failed to save card") from exc
+            raise PersistenceError("failed to save card") from exc
 
     def get(self, card_id: UUID) -> Card:
         model = self._session.get(CardModel, card_id)
         if model is None:
-            raise EntityNotFoundError(f"err: card {card_id} not found")
+            raise EntityNotFoundError(f"card {card_id} not found")
         return CardMapper.to_domain(model)
 
     def delete(self, card_id: UUID) -> None:
         model = self._session.get(CardModel, card_id)
         if model is None:
-            raise EntityNotFoundError(f"err: card {card_id} not found")
+            raise EntityNotFoundError(f"card {card_id} not found")
 
         try:
             self._session.delete(model)
             self._session.commit()
         except SQLAlchemyError as exc:
             self._session.rollback()
-            raise PersistenceError(f"err: failed to delete card {card_id}") from exc
+            raise PersistenceError(f"failed to delete card {card_id}") from exc
 
     def exists(self, card_id: UUID) -> bool:
         model = self._session.get(CardModel, card_id)
         return model is not None
 
     def list_all(self) -> list[Card]:
-        models = self._session.query(CardModel).order_by(CardModel.id).all()
+        models = self._session.query(CardModel).order_by(CardModel.title.asc()).all()
         return [CardMapper.to_domain(model) for model in models]

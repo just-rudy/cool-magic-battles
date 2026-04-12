@@ -67,12 +67,12 @@ class SqlAlchemyGameRepository(GameRepository):
         except IntegrityError as exc:
             self._session.rollback()
             raise PersistenceError(
-                "err: failed to save game - integrity constraint violated"
+                "failed to save game - integrity constraint violated"
             ) from exc
 
         except SQLAlchemyError as exc:
             self._session.rollback()
-            raise PersistenceError("err: failed to save game") from exc
+            raise PersistenceError("failed to save game") from exc
 
     def get(self, game_id: UUID) -> Game:
         model = self._session.get(GameModel, game_id)
@@ -94,7 +94,7 @@ class SqlAlchemyGameRepository(GameRepository):
     def delete(self, game_id: UUID) -> None:
         model = self._session.get(GameModel, game_id)
         if model is None:
-            raise EntityNotFoundError(f"err: game {game_id} not found")
+            raise EntityNotFoundError(f"game {game_id} not found")
 
         try:
             self._session.query(PlayerModel).filter(
@@ -104,7 +104,7 @@ class SqlAlchemyGameRepository(GameRepository):
             self._session.commit()
         except SQLAlchemyError as exc:
             self._session.rollback()
-            raise PersistenceError("err: failed to delete game") from exc
+            raise PersistenceError("failed to delete game") from exc
 
     def exists(self, game_id: UUID) -> bool:
         return self._session.get(GameModel, game_id) is not None

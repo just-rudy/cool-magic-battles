@@ -16,9 +16,7 @@ class PlayerModel(Base):
         Uuid, ForeignKey("games.id", ondelete="CASCADE"), nullable=False
     )
     user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("users.id"), nullable=False)
-    nickname: Mapped[str] = mapped_column(
-        String(50), ForeignKey("users.username"), nullable=False
-    )
+    nickname: Mapped[str] = mapped_column(String(50), nullable=False)
     turn_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     health: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
     base_echo: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

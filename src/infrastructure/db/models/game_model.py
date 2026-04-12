@@ -13,9 +13,7 @@ class GameModel(Base):
     )
     status: Mapped[str] = mapped_column(String(50), nullable=False)
     current_turn: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    current_player_id: Mapped[UUID | None] = mapped_column(
-        Uuid, ForeignKey("players.id"), nullable=True
-    )
+    current_player_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
     # memos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     # time_start: Mapped[str] = mapped_column(String(50), nullable=False)
     # time_end: Mapped[str | None] = mapped_column(String(50), nullable=True)

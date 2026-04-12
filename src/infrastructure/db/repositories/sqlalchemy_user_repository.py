@@ -20,7 +20,7 @@ class SqlAlchemyUserRepository(UserRepository):
 
     def save(self, user: User) -> None:
         if not user.username.strip():
-            raise EntityValidationError("err: uername must not be empty")
+            raise EntityValidationError("uername must not be empty")
 
         try:
             model = self._session.get(UserModel, user.id)
@@ -33,29 +33,29 @@ class SqlAlchemyUserRepository(UserRepository):
         except IntegrityError as exc:
             self._session.rollback()
             raise PersistenceError(
-                "err: failed to save user: integrity constraint violated"
+                "failed to save user: integrity constraint violated"
             ) from exc
         except SQLAlchemyError as exc:
             self._session.rollback()
-            raise PersistenceError("err: failed to save user") from exc
+            raise PersistenceError("failed to save user") from exc
 
     def get(self, user_id: UUID) -> User:
         model = self._session.get(UserModel, user_id)
         if model is None:
-            raise EntityNotFoundError(f"err: user {user_id} not found")
+            raise EntityNotFoundError(f"user {user_id} not found")
         return UserMapper.to_domain(model)
 
     def delete(self, user_id: UUID) -> None:
         model = self._session.get(UserModel, user_id)
         if model is None:
-            raise EntityNotFoundError(f"err: user {user_id} not found")
+            raise EntityNotFoundError(f"user {user_id} not found")
 
         try:
             self._session.delete(model)
             self._session.commit()
         except SQLAlchemyError as exc:
             self._session.rollback()
-            raise PersistenceError("err: failed to delete user") from exc
+            raise PersistenceError("failed to delete user") from exc
 
     def exists(self, user_id: UUID) -> bool:
         return self._session.get(UserModel, user_id) is not None
