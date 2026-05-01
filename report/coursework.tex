@@ -1,6 +1,7 @@
 \documentclass{bmstu}
 \usepackage{longtable}
 \bibliography{biblio}
+\usepackage{makecell}
 
 % Переопределение формата даты (добавляем ведущие нули)
 \DeclareFieldFormat{urldate}{%
@@ -9,6 +10,9 @@
 	\ifnum\thefield{urlmonth}<10 0\fi\thefield{urlmonth}.%
 	\thefield{urlyear})%
 }
+
+% Change bullet style
+\renewcommand{\labelitemi}{\textsc{---}}
 
 \begin{document}
 

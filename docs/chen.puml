@@ -9,7 +9,7 @@ entity User {
 
 entity Game {
   id
-  current_turn
+  cur_turn
   time_start
   time_end
 }

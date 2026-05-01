@@ -57,7 +57,7 @@ package "Database Entities (Persistence Models)" {
   class GameEntity {
     +id: UUID
     +status: string
-    +current_player_id: UUID
+    +cur_player_id: UUID
     +start_time: datetime
     +end_time: datetime
     +winner_id: UUID

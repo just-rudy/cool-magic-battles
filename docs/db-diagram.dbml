@@ -35,7 +35,7 @@ Table Players {
 
 Table Games {
   id integer [pk, increment, unique]
-  current_turn integer
+  cur_turn integer
   memos integer
   time_start datetime
   time_end datetime [null]

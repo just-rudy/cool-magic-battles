@@ -62,8 +62,8 @@ package "Domain Entities" {
     + host_user_id: UUID
     + status: GameStatus
     + players: list[Player]
-    + current_turn: int
-    + current_player_id: UUID?
+    + cur_turn: int
+    + cur_player_id: UUID?
     + market_deck: Deck
     + game_deck: Deck
     + banish_deck: Deck
