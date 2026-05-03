@@ -1,6 +1,6 @@
-from domain.entities.game import Game
+from domain.entities import Game
 from domain.enums import GameStatus
-from infrastructure.db.models.game_model import GameModel
+from infrastructure.db.models import GameModel
 
 
 class GameMapper:
@@ -10,8 +10,8 @@ class GameMapper:
             id=model.id,
             host_user_id=model.host_user_id,
             status=GameStatus(model.status),
-            current_turn=model.current_turn,
-            current_player_id=model.current_player_id,
+            cur_turn=model.cur_turn,
+            cur_player_id=model.cur_player_id,
         )
 
     @staticmethod
@@ -20,6 +20,6 @@ class GameMapper:
             id=entity.id,
             host_user_id=entity.host_user_id,
             status=entity.status.value,
-            current_turn=entity.current_turn,
-            current_player_id=entity.current_player_id,
+            cur_turn=entity.cur_turn,
+            cur_player_id=entity.cur_player_id,
         )

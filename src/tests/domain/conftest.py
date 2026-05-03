@@ -3,11 +3,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from domain.entities.card import Card
-from domain.entities.deck import Deck
-from domain.entities.game import Game
-from domain.entities.player import Player
-from domain.entities.user import User
+from domain.entities import Card, Deck, Game, Player, User
 from domain.enums import DeckType, GameStatus
 
 
@@ -105,8 +101,8 @@ def make_game(make_deck: Callable[..., Deck]) -> Callable[..., Game]:
         host_user_id: UUID,
         status: GameStatus = GameStatus.CREATED,
         players: list[Player] | None = None,
-        current_turn: int = 0,
-        current_player_id: UUID | None = None,
+        cur_turn: int = 0,
+        cur_player_id: UUID | None = None,
         market_deck: Deck | None = None,
         game_deck: Deck | None = None,
         banish_deck: Deck | None = None,
@@ -116,8 +112,8 @@ def make_game(make_deck: Callable[..., Deck]) -> Callable[..., Game]:
             host_user_id=host_user_id or uuid4(),
             status=status,
             players=players or [],
-            current_turn=current_turn,
-            current_player_id=current_player_id,
+            cur_turn=cur_turn,
+            cur_player_id=cur_player_id,
             market_deck=market_deck or make_deck(type=DeckType.DECK, if_open=True),
             game_deck=game_deck or make_deck(type=DeckType.DECK, if_open=False),
             banish_deck=banish_deck or make_deck(type=DeckType.DECK, if_open=False),

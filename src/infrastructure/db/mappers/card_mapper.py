@@ -1,5 +1,5 @@
-from domain.entities.card import Card
-from infrastructure.db.models.card_model import CardModel
+from domain.entities import Card
+from infrastructure.db.models import CardModel
 
 
 class CardMapper:

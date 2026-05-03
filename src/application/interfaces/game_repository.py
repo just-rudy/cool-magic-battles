@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
-from domain.entities.game import Game
+from domain.entities import Game
 
 
 class GameRepository(ABC):

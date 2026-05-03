@@ -3,20 +3,17 @@ from uuid import uuid4
 
 import pytest
 
-from application.services.game_state_manager import GameStateManager
-from domain.entities.game import Game
-from domain.entities.player import Player
+from application.services import GameStateManager
+from domain.entities import Game, Player
 
 
-def test_validate_turn_returns_true_for_current_player(
+def test_validate_turn_returns_true_for_cur_player(
     make_game: Callable[..., Game],
     make_player: Callable[..., Player],
 ) -> None:
     manager = GameStateManager()
     player = make_player()
-    game = make_game(
-        host_user_id=uuid4(), players=[player], current_player_id=player.id
-    )
+    game = make_game(host_user_id=uuid4(), players=[player], cur_player_id=player.id)
 
     result = manager.validate_turn(game, player.id)
 
@@ -31,7 +28,7 @@ def test_validate_turn_raises_error_for_wrong_player(
     player = make_player()
     other_player_id = uuid4()
     game = make_game(
-        host_user_id=uuid4(), players=[player], current_player_id=other_player_id
+        host_user_id=uuid4(), players=[player], cur_player_id=other_player_id
     )
 
     with pytest.raises(ValueError, match="Not your turn"):
@@ -48,14 +45,14 @@ def test_next_turn_switches_to_player_with_next_turn_order(
     game = make_game(
         host_user_id=uuid4(),
         players=[p1, p2],
-        current_turn=0,
-        current_player_id=p1.id,
+        cur_turn=0,
+        cur_player_id=p1.id,
     )
 
     manager.next_turn(game)
 
-    assert game.current_turn == 1
-    assert game.current_player_id == p2.id
+    assert game.cur_turn == 1
+    assert game.cur_player_id == p2.id
 
 
 def test_next_turn_wraps_to_first_player(
@@ -68,14 +65,14 @@ def test_next_turn_wraps_to_first_player(
     game = make_game(
         host_user_id=uuid4(),
         players=[p1, p2],
-        current_turn=1,
-        current_player_id=p2.id,
+        cur_turn=1,
+        cur_player_id=p2.id,
     )
 
     manager.next_turn(game)
 
-    assert game.current_turn == 2
-    assert game.current_player_id == p1.id
+    assert game.cur_turn == 2
+    assert game.cur_player_id == p1.id
 
 
 def test_next_turn_raises_error_when_no_players(
@@ -98,8 +95,8 @@ def test_next_turn_raises_error_when_next_player_not_found(
     game = make_game(
         host_user_id=uuid4(),
         players=[p1, p2],
-        current_turn=0,
-        current_player_id=p1.id,
+        cur_turn=0,
+        cur_player_id=p1.id,
     )
 
     with pytest.raises(ValueError, match="No next turn player found"):

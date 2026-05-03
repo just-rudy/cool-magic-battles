@@ -1,15 +1,18 @@
 from uuid import UUID, uuid4
 import random
+
 from application.interfaces.game_repository import GameRepository
 from application.interfaces.user_repository import UserRepository
+from application.services.card_logic import CardLogic
 from application.services.deck_service import DeckService
 from application.services.game_state_manager import GameStateManager
-from application.services.card_logic import CardLogic
-from domain.entities.game import Game
-from domain.entities.player import Player
+
+from domain.entities import Game, Player, Deck, Card
+
+# from domain.entities import Player
+# from domain.entities import Deck
+# from domain.entities import Card
 from domain.enums import GameStatus
-from domain.entities.deck import Deck
-from domain.entities.card import Card
 
 
 class GameLogic:
@@ -46,11 +49,18 @@ class GameLogic:
 
     def start_game(self, game_id: UUID) -> None:
         game = self._repo.get(game_id)
+
         if game.status == GameStatus.IN_PROGRESS:
             raise ValueError("Game already in progress")
 
         game.status = GameStatus.IN_PROGRESS
         game = self.order_player_turns(game)
+
+        if not game.players:
+            raise ValueError("No players in the game")
+
+        game.cur_turn = 0
+        game.cur_player_id = game.players[0].id
 
         self._repo.save(game)
 
@@ -109,7 +119,8 @@ class GameLogic:
 
         if not self._card_logic.can_be_played(player, card):
             raise ValueError("Card can't be played")
-        # later apply_effect()
+
+        self._card_logic.apply_effect(player, card)
         player.hand_deck.cards.remove(card)
         player.table_deck.cards.append(card)
 
@@ -139,3 +150,10 @@ class GameLogic:
 
         self._state.next_turn(game)
         self._repo.save(game)
+
+    # def get_game_state(self, game_id: UUID) -> Game:
+    #     return self._repo.get(game_id)
+    # list_games()
+    # list_players(game_id)
+    # list_market_cards(game_id)
+    # list_player_hand(game_id, player_id)

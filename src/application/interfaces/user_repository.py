@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
-from domain.entities.user import User
+from domain.entities import User
 
 
 class UserRepository(ABC):
@@ -18,4 +18,12 @@ class UserRepository(ABC):
 
     @abstractmethod
     def exists(self, user_id: UUID) -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_by_username(self, username: str) -> User | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def list_all(self) -> list[User]:
         raise NotImplementedError

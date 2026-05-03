@@ -1,5 +1,5 @@
-from domain.entities.player import Player
-from infrastructure.db.models.player_model import PlayerModel
+from domain.entities import Player
+from infrastructure.db.models import PlayerModel
 
 
 class PlayerMapper:

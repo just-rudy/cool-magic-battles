@@ -4,14 +4,14 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from application.interfaces.user_repository import UserRepository
-from domain.entities.user import User
+from domain.entities import User
 from infrastructure.db.exceptions import (
     EntityNotFoundError,
     EntityValidationError,
     PersistenceError,
 )
 from infrastructure.db.mappers.user_mapper import UserMapper
-from infrastructure.db.models.user_model import UserModel
+from infrastructure.db.models import UserModel
 
 
 class SqlAlchemyUserRepository(UserRepository):
@@ -20,7 +20,7 @@ class SqlAlchemyUserRepository(UserRepository):
 
     def save(self, user: User) -> None:
         if not user.username.strip():
-            raise EntityValidationError("uername must not be empty")
+            raise EntityValidationError("username must not be empty")
 
         try:
             model = self._session.get(UserModel, user.id)
@@ -59,3 +59,17 @@ class SqlAlchemyUserRepository(UserRepository):
 
     def exists(self, user_id: UUID) -> bool:
         return self._session.get(UserModel, user_id) is not None
+
+    def get_by_username(self, username: str) -> User | None:
+        model = (
+            self._session.query(UserModel)
+            .filter(UserModel.username == username)
+            .one_or_none()
+        )
+        if model is None:
+            return None
+        return UserMapper.to_domain(model)
+
+    def list_all(self) -> list[User]:
+        models = self._session.query(UserModel).all()
+        return [UserMapper.to_domain(m) for m in models]

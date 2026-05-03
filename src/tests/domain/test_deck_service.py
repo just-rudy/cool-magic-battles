@@ -2,9 +2,8 @@ from typing import Callable
 
 import pytest
 
-from application.services.deck_service import DeckService
-from domain.entities.card import Card
-from domain.entities.deck import Deck
+from application.services import DeckService
+from domain.entities import Card, Deck
 
 
 def test_draw_returns_requested_number_of_cards(

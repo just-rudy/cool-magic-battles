@@ -5,15 +5,9 @@ from uuid import uuid4
 import pytest
 from pytest import MonkeyPatch
 
-from application.services.card_logic import CardLogic
-from application.services.deck_service import DeckService
-from application.services.game_logic import GameLogic
-from application.services.game_state_manager import GameStateManager
-from domain.entities.card import Card
-from domain.entities.deck import Deck
-from domain.entities.game import Game
-from domain.entities.player import Player
-from domain.entities.user import User
+from application.services import CardLogic, DeckService, GameLogic, GameStateManager
+
+from domain.entities import Card, Deck, Game, Player, User
 from domain.enums import GameStatus
 
 
@@ -258,7 +252,7 @@ def test_buy_card_raises_error_when_game_not_in_progress(
         host_user_id=uuid4(),
         players=[player],
         status=GameStatus.CREATED,
-        current_player_id=player.id,
+        cur_player_id=player.id,
         market_deck=market_deck,
     )
     game_repository.get.return_value = game
@@ -306,7 +300,7 @@ def test_buy_card_raises_error_when_card_cant_be_bought(
         host_user_id=uuid4(),
         players=[player],
         status=GameStatus.IN_PROGRESS,
-        current_player_id=player.id,
+        cur_player_id=player.id,
         market_deck=market_deck,
     )
     game_repository.get.return_value = game
@@ -332,7 +326,7 @@ def test_buy_card_moves_card_from_market_to_discard_and_decreases_echo(
         host_user_id=uuid4(),
         players=[player],
         status=GameStatus.IN_PROGRESS,
-        current_player_id=player.id,
+        cur_player_id=player.id,
         market_deck=market_deck,
     )
     game_repository.get.return_value = game
@@ -362,7 +356,7 @@ def test_play_card_raises_error_when_game_not_in_progress(
         host_user_id=uuid4(),
         players=[player],
         status=GameStatus.CREATED,
-        current_player_id=player.id,
+        cur_player_id=player.id,
         market_deck=market_deck,
     )
     game_repository.get.return_value = game
@@ -410,7 +404,7 @@ def test_play_card_raises_error_when_card_cant_be_played(
         host_user_id=uuid4(),
         players=[player],
         status=GameStatus.IN_PROGRESS,
-        current_player_id=player.id,
+        cur_player_id=player.id,
     )
 
     game_repository.get.return_value = game
@@ -421,7 +415,7 @@ def test_play_card_raises_error_when_card_cant_be_played(
         logic.play_card(game.id, player.id, card.id)
 
 
-def test_play_card_moves_card_from_hand_to_table_current_expected_domain_behavior(
+def test_play_card_moves_card_from_hand_to_table_cur_expected_domain_behavior(
     game_logic: tuple[GameLogic, Mock, Mock, Mock, Mock, Mock],
     make_game: Callable[..., Game],
     make_player: Callable[..., Player],
@@ -437,7 +431,7 @@ def test_play_card_moves_card_from_hand_to_table_current_expected_domain_behavio
         host_user_id=uuid4(),
         players=[player],
         status=GameStatus.IN_PROGRESS,
-        current_player_id=player.id,
+        cur_player_id=player.id,
     )
     game_repository.get.return_value = game
     state_manager.validate_turn.return_value = True
@@ -447,6 +441,7 @@ def test_play_card_moves_card_from_hand_to_table_current_expected_domain_behavio
 
     assert card not in player.hand_deck.cards
     assert card in player.table_deck.cards
+    card_logic.apply_effect.assert_called_once_with(player, card)
     game_repository.save.assert_called_once_with(game)
 
 
@@ -483,9 +478,7 @@ def test_end_turn_discards_cards_draws_new_hand_calls_next_turn_and_saves(
     player.draw_deck.cards = draw_cards.copy()
     player.discard_deck.cards = []
 
-    game = make_game(
-        host_user_id=uuid4(), players=[player], current_player_id=player.id
-    )
+    game = make_game(host_user_id=uuid4(), players=[player], cur_player_id=player.id)
     game_repository.get.return_value = game
     state_manager.validate_turn.return_value = True
     deck_service.draw.return_value = draw_cards.copy()
@@ -522,9 +515,7 @@ def test_end_turn_shuffles_discard_into_draw_deck_when_cards_are_insufficient(
     player.hand_deck.cards = hand_cards.copy()
     player.table_deck.cards = table_cards.copy()
 
-    game = make_game(
-        host_user_id=uuid4(), players=[player], current_player_id=player.id
-    )
+    game = make_game(host_user_id=uuid4(), players=[player], cur_player_id=player.id)
     game_repository.get.return_value = game
     state_manager.validate_turn.return_value = True
     deck_service.draw.return_value = new_hand.copy()

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from uuid import UUID, uuid4
-from domain.entities.deck import Deck
+from .deck import Deck
 
 
 @dataclass

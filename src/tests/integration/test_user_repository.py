@@ -2,14 +2,16 @@ from uuid import uuid4
 
 import pytest
 
-from domain.entities.user import User
+from sqlalchemy.orm import Session
+
+from domain.entities import User
 from infrastructure.db.exceptions import EntityNotFoundError, EntityValidationError
 from infrastructure.db.repositories.sqlalchemy_user_repository import (
     SqlAlchemyUserRepository,
 )
 
 
-def test_save_and_get_user(session: object) -> None:
+def test_save_and_get_user(session: Session) -> None:
     repo = SqlAlchemyUserRepository(session)
     user = User(id=uuid4(), username="alice")
 
@@ -20,7 +22,7 @@ def test_save_and_get_user(session: object) -> None:
     assert loaded.username == "alice"
 
 
-def test_update_user(session: object) -> None:
+def test_update_user(session: Session) -> None:
     repo = SqlAlchemyUserRepository(session)
     user = User(id=uuid4(), username="alice")
     repo.save(user)
@@ -32,7 +34,7 @@ def test_update_user(session: object) -> None:
     assert loaded.username == "alice_new"
 
 
-def test_delete_user(session: object) -> None:
+def test_delete_user(session: Session) -> None:
     repo = SqlAlchemyUserRepository(session)
     user = User(id=uuid4(), username="alice")
     repo.save(user)
@@ -44,7 +46,7 @@ def test_delete_user(session: object) -> None:
         repo.get(user.id)
 
 
-def test_save_user_with_empty_username_raises_error(session: object) -> None:
+def test_save_user_with_empty_username_raises_error(session: Session) -> None:
     repo = SqlAlchemyUserRepository(session)
 
     with pytest.raises(EntityValidationError):

@@ -8,7 +8,6 @@ class PlayerModel(Base):
     __tablename__ = "players"
     __table_args__ = (
         UniqueConstraint("game_id", "user_id", name="uq_players_game_user"),
-        UniqueConstraint("game_id", "turn_order", name="uq_players_game_turn_order"),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)

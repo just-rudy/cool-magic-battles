@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from uuid import UUID
-from domain.entities.card import Card
+
+from .card import Card
 from domain.enums import DeckType
 
 

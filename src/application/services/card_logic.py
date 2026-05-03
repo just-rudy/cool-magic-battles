@@ -10,3 +10,7 @@ class CardLogic:
 
     def can_be_played(self, player: Player, card: Card) -> bool:
         return card in player.hand_deck.cards
+
+    # TODO: card_effect
+    def apply_effect(self, player: Player, card: Card) -> None:
+        player.cur_echo += card.echo

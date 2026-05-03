@@ -14,6 +14,6 @@ class DeckModel(Base):
         Uuid, ForeignKey("games.id"), nullable=True
     )
     player_id: Mapped[UUID | None] = mapped_column(
-        Uuid, ForeignKey("Players.id"), nullable=True
+        Uuid, ForeignKey("players.id"), nullable=True
     )
     if_open: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

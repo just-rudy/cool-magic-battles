@@ -1,8 +1,7 @@
-from application.services.card_logic import CardLogic
+from application.services import CardLogic
 from typing import Callable
 
-from domain.entities.card import Card
-from domain.entities.player import Player
+from domain.entities import Card, Player
 
 
 def test_can_purchase_returns_true(
@@ -56,3 +55,15 @@ def test_can_be_played_returns_false(
     result = logic.can_be_played(player, card)
 
     assert result is False
+
+
+def test_apply_effect_adds_card_echo_to_current_echo(
+    make_player: Callable[..., Player], make_card: Callable[..., Card]
+) -> None:
+    logic = CardLogic()
+    player = make_player(cur_echo=2)
+    card = make_card(echo=3)
+
+    logic.apply_effect(player, card)
+
+    assert player.cur_echo == 5

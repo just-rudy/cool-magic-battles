@@ -2,15 +2,16 @@ from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
-from domain.entities.card import Card
 from application.interfaces.card_repository import CardRepository
+
+from domain.entities import Card
 from infrastructure.db.exceptions import (
     EntityNotFoundError,
     EntityValidationError,
     PersistenceError,
 )
 from infrastructure.db.mappers.card_mapper import CardMapper
-from infrastructure.db.models.card_model import CardModel
+from infrastructure.db.models import CardModel
 
 
 class SqlAlchemyCardRepository(CardRepository):
@@ -71,3 +72,15 @@ class SqlAlchemyCardRepository(CardRepository):
     def list_all(self) -> list[Card]:
         models = self._session.query(CardModel).order_by(CardModel.title.asc()).all()
         return [CardMapper.to_domain(model) for model in models]
+
+    def find_by_title(self, title: str) -> Card | None:
+        model = (
+            self._session.query(CardModel)
+            .filter(CardModel.title == title)
+            .one_or_none()
+        )
+
+        if model is None:
+            return None
+
+        return CardMapper.to_domain(model)
