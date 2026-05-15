@@ -14,6 +14,7 @@ class Game:
     players: list[Player] = field(default_factory=list)
     cur_turn: int = 0
     cur_player_id: UUID | None = None
+    winner_id: UUID | None = None
     market_deck: Deck = field(default_factory=lambda: Deck(id=uuid4()))
     game_deck: Deck = field(default_factory=lambda: Deck(id=uuid4()))
     banish_deck: Deck = field(default_factory=lambda: Deck(id=uuid4()))

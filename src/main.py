@@ -1,9 +1,11 @@
 from bootstrap.container import build_console_app
+from config.config import load_config
 from infrastructure.logging.logger import get_logger, setup_logging
 
 
 def main() -> None:
-    setup_logging()
+    config = load_config()
+    setup_logging(config.logging.file)
     logger = get_logger("main")
     logger.info("Application starting")
 

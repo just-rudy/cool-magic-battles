@@ -1,17 +1,13 @@
-from uuid import UUID, uuid4
 import random
+from uuid import UUID, uuid4
 
 from application.interfaces.game_repository import GameRepository
 from application.interfaces.user_repository import UserRepository
 from application.services.card_logic import CardLogic
 from application.services.deck_service import DeckService
 from application.services.game_state_manager import GameStateManager
+from domain.entities import Card, Deck, Game, Player
 
-from domain.entities import Game, Player, Deck, Card
-
-# from domain.entities import Player
-# from domain.entities import Deck
-# from domain.entities import Card
 from domain.enums import GameStatus
 
 
@@ -42,6 +38,34 @@ class GameLogic:
                 return card
         raise ValueError("Card not in deck")
 
+    def _player_cards(self, player: Player) -> list[Card]:
+        return [
+            *player.draw_deck.cards,
+            *player.hand_deck.cards,
+            *player.table_deck.cards,
+            *player.discard_deck.cards,
+        ]
+
+    def _determine_winner(self, game: Game) -> Player:
+        if not game.players:
+            raise ValueError("No players in the game")
+
+        def ranking(player: Player) -> tuple[int, int, int, str, str]:
+            cards = self._player_cards(player)
+            cool_points = sum(card.cool_points for card in cards)
+            cards_count = len(cards)
+            # Final fallback is deterministic because card type tie-breakers
+            # are not modeled in the current simplified domain yet.
+            return (
+                cool_points,
+                cards_count,
+                -player.turn_order,
+                player.nickname,
+                str(player.id),
+            )
+
+        return max(game.players, key=ranking)
+
     def create_game(self, host_user_id: UUID) -> Game:
         game = Game(id=uuid4(), host_user_id=host_user_id)
         self._repo.save(game)
@@ -54,6 +78,7 @@ class GameLogic:
             raise ValueError("Game already in progress")
 
         game.status = GameStatus.IN_PROGRESS
+        game.winner_id = None
         game = self.order_player_turns(game)
 
         if not game.players:
@@ -133,7 +158,7 @@ class GameLogic:
             raise ValueError("Another player's turn")
 
         player = self._get_player(game, player_id)
-        player.cur_echo = 0
+        player.cur_echo = player.base_echo
         player.discard_deck.cards.extend(player.hand_deck.cards)
         player.discard_deck.cards.extend(player.table_deck.cards)
         player.hand_deck.cards.clear()
@@ -151,9 +176,15 @@ class GameLogic:
         self._state.next_turn(game)
         self._repo.save(game)
 
-    # def get_game_state(self, game_id: UUID) -> Game:
-    #     return self._repo.get(game_id)
-    # list_games()
-    # list_players(game_id)
-    # list_market_cards(game_id)
-    # list_player_hand(game_id, player_id)
+    def finish_game(self, game_id: UUID, player_id: UUID) -> None:
+        game = self._repo.get(game_id)
+        self._get_player(game, player_id)
+
+        if game.status == GameStatus.FINISHED:
+            raise ValueError("Game already finished")
+
+        winner = self._determine_winner(game)
+        game.status = GameStatus.FINISHED
+        game.cur_player_id = None
+        game.winner_id = winner.id
+        self._repo.save(game)

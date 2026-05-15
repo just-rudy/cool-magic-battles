@@ -34,7 +34,7 @@ def parse_instruction(raw: str) -> ParsedInstruction:
     raw_parts = list(raw.strip().split())
 
     if not raw_parts:
-        raise ValueError("err: empty instrustion")
+        raise ValueError("err: empty instruction")
 
     instr = ParsedInstruction(task=raw_parts[0])
     fields = COMMAND_FIELDS.get(raw_parts[0], [])

@@ -4,13 +4,12 @@ from sqlalchemy import create_engine, Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from infrastructure.db.base import Base
+import infrastructure.db.models  # noqa: F401 — register ORM tables
 
 
 @pytest.fixture()
 def engine() -> Generator[Engine, None, None]:
-    from sqlalchemy.engine import Engine
-
-    engine: Engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(bind=engine)
     try:
         yield engine

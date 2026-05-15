@@ -200,6 +200,85 @@ def test_start_game_raises_error_if_already_in_progress(
         logic.start_game(game.id)
 
 
+def test_finish_game_marks_game_finished_and_clears_current_player(
+    game_logic: tuple[GameLogic, Mock, Mock, Mock, Mock, Mock],
+    make_game: Callable[..., Game],
+    make_player: Callable[..., Player],
+    make_card: Callable[..., Card],
+    make_deck: Callable[..., Deck],
+) -> None:
+    logic, game_repository, *_ = game_logic
+    stronger = make_player(
+        nickname="stronger",
+        draw_deck=make_deck(cards=[make_card(cool_points=3), make_card(cool_points=2)]),
+    )
+    weaker = make_player(
+        nickname="weaker",
+        draw_deck=make_deck(cards=[make_card(cool_points=1)]),
+    )
+    game = make_game(
+        host_user_id=uuid4(),
+        players=[stronger, weaker],
+        status=GameStatus.IN_PROGRESS,
+        cur_player_id=stronger.id,
+    )
+    game_repository.get.return_value = game
+
+    logic.finish_game(game.id, stronger.id)
+
+    assert game.status == GameStatus.FINISHED
+    assert game.cur_player_id is None
+    assert game.winner_id == stronger.id
+    game_repository.save.assert_called_once_with(game)
+
+
+def test_finish_game_raises_error_when_game_already_finished(
+    game_logic: tuple[GameLogic, Mock, Mock, Mock, Mock, Mock],
+    make_game: Callable[..., Game],
+    make_player: Callable[..., Player],
+) -> None:
+    logic, game_repository, *_ = game_logic
+    player = make_player()
+    game = make_game(
+        host_user_id=uuid4(),
+        players=[player],
+        status=GameStatus.FINISHED,
+    )
+    game_repository.get.return_value = game
+
+    with pytest.raises(ValueError, match="Game already finished"):
+        logic.finish_game(game.id, player.id)
+
+
+def test_finish_game_uses_cards_count_as_tie_breaker(
+    game_logic: tuple[GameLogic, Mock, Mock, Mock, Mock, Mock],
+    make_game: Callable[..., Game],
+    make_player: Callable[..., Player],
+    make_card: Callable[..., Card],
+    make_deck: Callable[..., Deck],
+) -> None:
+    logic, game_repository, *_ = game_logic
+    first = make_player(
+        nickname="first",
+        draw_deck=make_deck(cards=[make_card(cool_points=2), make_card(cool_points=1)]),
+    )
+    second = make_player(
+        nickname="second",
+        draw_deck=make_deck(cards=[make_card(cool_points=3)]),
+    )
+    game = make_game(
+        host_user_id=uuid4(),
+        players=[first, second],
+        status=GameStatus.IN_PROGRESS,
+        cur_player_id=first.id,
+    )
+    game_repository.get.return_value = game
+
+    logic.finish_game(game.id, first.id)
+
+    assert game.winner_id == first.id
+
+
 def test_add_player_creates_player_and_saves_game(
     game_logic: tuple[GameLogic, Mock, Mock, Mock, Mock, Mock],
     make_game: Callable[..., Game],

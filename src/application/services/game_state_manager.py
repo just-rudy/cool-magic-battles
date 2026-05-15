@@ -1,4 +1,5 @@
 from uuid import UUID
+
 from domain.entities import Game
 
 

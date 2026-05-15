@@ -1,6 +1,7 @@
 import random
-from domain.entities.deck import Deck
+
 from domain.entities.card import Card
+from domain.entities.deck import Deck
 
 
 class DeckService:

@@ -1,38 +1,33 @@
-from uuid import UUID
 from typing import Any, cast
+from uuid import UUID
 
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
-
-from domain.entities import Player
+from rich.table import Table
 
 from application.controllers.card_controller import CardController
 from application.controllers.game_controller import GameController
 from application.controllers.user_controller import UserController
-
-from infrastructure.ui.console.parser import ParsedInstruction
-from infrastructure.ui.console.state import ConsoleState
-from infrastructure.ui.console.prompts import (
-    read_word,
-    # read_uuid,
-    read_word_optional,
-    read_uuid_optional,
-)
+from domain.entities import Player
+from infrastructure.logging.logger import get_logger
 from infrastructure.ui.console.formatters import (
-    format_message,
-    format_user,
-    format_users,
-    format_player,
     format_cards,
     format_game_state,
+    format_message,
+    format_player,
+    format_user,
+    format_users,
     format_warn,
 )
-from infrastructure.ui.console.menu import print_menu
 from infrastructure.ui.console.id_utils import is_valid_uuid
-
-from infrastructure.logging.logger import get_logger
-
+from infrastructure.ui.console.menu import print_menu
+from infrastructure.ui.console.parser import ParsedInstruction
+from infrastructure.ui.console.prompts import (
+    read_uuid_optional,
+    read_word,
+    read_word_optional,
+)
+from infrastructure.ui.console.state import ConsoleState
 
 logger = get_logger("ui.console.handler")
 
@@ -207,7 +202,8 @@ class ConsoleHandler:
         player = self._set_current_user_player(state, user_id, game_id)
 
         logger.info(
-            f"Current user/player switched, game id=[{game_id}] user id=[{user_id}] player id=[{player.id}]"
+            f"Current user/player switched, game id=[{game_id}] "
+            f"user id=[{user_id}] player id=[{player.id}]"
         )
         return format_message(
             f"logged as {player.nickname}, player id=[{player.id}], game id=[{game_id}]"
@@ -234,10 +230,12 @@ class ConsoleHandler:
         state.cur_player = player
 
         logger.info(
-            f"Created new game id=[{game.id}] and joined player id=[{player.id}] from user id=[{user_id}]"
+            f"Created new game id=[{game.id}] and joined player id=[{player.id}] "
+            f"from user id=[{user_id}]"
         )
         return format_message(
-            f"game id=[{game.id}] was created and player id=[{player.id}] joined from user id=[{user_id}]"
+            f"game id=[{game.id}] was created and player id=[{player.id}] "
+            f"joined from user id=[{user_id}]"
         )
 
     def _handle_gen_decks(self, cmd: ParsedInstruction, state: ConsoleState) -> Panel:
@@ -284,7 +282,8 @@ class ConsoleHandler:
         state.cur_player = player
 
         logger.info(
-            f"Player joined, game id=[{game_id}] user id=[{user_id}] player id=[{player.id}]"
+            f"Player joined, game id=[{game_id}] user id=[{user_id}] "
+            f"player id=[{player.id}]"
         )
         return format_message(
             f"player {player.nickname} id=[{player.id}] joined game id=[{game_id}]"
@@ -323,7 +322,8 @@ class ConsoleHandler:
         self._sync_current_player(state, game_id, player_id)
 
         logger.info(
-            f"Card played, game id=[{game_id}] player id=[{player_id}] card id=[{card_id}]"
+            f"Card played, game id=[{game_id}] player id=[{player_id}] "
+            f"card id=[{card_id}]"
         )
         return format_message(result)
 
@@ -346,7 +346,8 @@ class ConsoleHandler:
         self._sync_current_player(state, game_id, player_id)
 
         logger.info(
-            f"Card bought, game id=[{game_id}] player id=[{player_id}] card id=[{card_id}]"
+            f"Card bought, game id=[{game_id}] player id=[{player_id}] "
+            f"card id=[{card_id}]"
         )
         return format_message(result)
 

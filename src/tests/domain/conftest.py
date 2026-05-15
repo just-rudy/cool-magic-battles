@@ -16,6 +16,7 @@ def make_card() -> Callable[..., Card]:
         power: int = 1,
         echo: int = 1,
         cost: int = 3,
+        cool_points: int = 0,
     ) -> Card:
         return Card(
             id=uuid4(),
@@ -24,6 +25,7 @@ def make_card() -> Callable[..., Card]:
             power=power,
             echo=echo,
             cost=cost,
+            cool_points=cool_points,
         )
 
     return _make_card
@@ -103,6 +105,7 @@ def make_game(make_deck: Callable[..., Deck]) -> Callable[..., Game]:
         players: list[Player] | None = None,
         cur_turn: int = 0,
         cur_player_id: UUID | None = None,
+        winner_id: UUID | None = None,
         market_deck: Deck | None = None,
         game_deck: Deck | None = None,
         banish_deck: Deck | None = None,
@@ -114,6 +117,7 @@ def make_game(make_deck: Callable[..., Deck]) -> Callable[..., Game]:
             players=players or [],
             cur_turn=cur_turn,
             cur_player_id=cur_player_id,
+            winner_id=winner_id,
             market_deck=market_deck or make_deck(type=DeckType.DECK, if_open=True),
             game_deck=game_deck or make_deck(type=DeckType.DECK, if_open=False),
             banish_deck=banish_deck or make_deck(type=DeckType.DECK, if_open=False),

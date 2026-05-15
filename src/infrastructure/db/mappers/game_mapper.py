@@ -12,6 +12,7 @@ class GameMapper:
             status=GameStatus(model.status),
             cur_turn=model.cur_turn,
             cur_player_id=model.cur_player_id,
+            winner_id=model.winner_id,
         )
 
     @staticmethod
@@ -22,4 +23,5 @@ class GameMapper:
             status=entity.status.value,
             cur_turn=entity.cur_turn,
             cur_player_id=entity.cur_player_id,
+            winner_id=entity.winner_id,
         )

@@ -1,13 +1,12 @@
-from uuid import UUID, uuid4
-from typing import Any
 import random
+from typing import Any
+from uuid import UUID
 
-from domain.entities import Game, Player, Card
-
-from application.services import GameLogic
-
-from application.interfaces.game_repository import GameRepository
 from application.interfaces.card_repository import CardRepository
+from application.interfaces.game_repository import GameRepository
+from application.services import GameLogic
+from application.services.card_factory import generate_cards
+from domain.entities import Card, Game, Player
 
 
 class GameController:
@@ -16,10 +15,12 @@ class GameController:
         game_logic: GameLogic,
         game_repository: GameRepository,
         card_repository: CardRepository,
+        default_market_size: int,
     ) -> None:
         self._game_logic = game_logic
         self._game_repo = game_repository
         self._card_repo = card_repository
+        self._default_market_size = default_market_size
         self._runtime_games: dict[UUID, Game] = {}
 
     def _refresh_runtime_game(self, game_id: UUID) -> Game:
@@ -93,9 +94,9 @@ class GameController:
         cards = self._generate_cards(50)
         random.shuffle(cards)
 
-        game.market_deck.cards = cards[:5]
+        game.market_deck.cards = cards[: self._default_market_size]
 
-        index = 5
+        index = self._default_market_size
         for player in game.players:
             player.draw_deck.cards = cards[index : index + 10]
             player.hand_deck.cards = player.draw_deck.cards[: player.hand_size]
@@ -103,6 +104,8 @@ class GameController:
             player.discard_deck.cards = []
             player.table_deck.cards = []
             index += 10
+
+        game.game_deck.cards = cards[index:]
 
         self._game_repo.save(game)
         self._runtime_games[game_id] = game
@@ -149,7 +152,10 @@ class GameController:
 
     def end_turn(self, game_id: UUID, player_id: UUID) -> str:
         self._game_logic.end_turn(game_id, player_id)
-        self._refresh_runtime_game(game_id)
+        game = self._refresh_runtime_game(game_id)
+        self._refill_market(game)
+        self._game_repo.save(game)
+        self._runtime_games[game_id] = game
         return f"Player {player_id}'s turn has ended"
 
     def list_players(self, game_id: UUID) -> list[dict[str, Any]]:
@@ -170,93 +176,13 @@ class GameController:
         ]
 
     def _generate_cards(self, count: int) -> list[Card]:
-        titles = [
-            "Gimli",
-            "Legolas",
-            "Aragorn",
-            "Boromir",
-            "Balin",
-            "Dwalin",
-            "Kili",
-            "Fili",
-            "Bifur",
-            "Bofur",
-            "Bombur",
-            "Dori",
-            "Nori",
-            "Ori",
-            "Gloin",
-            "Oin",
-            "Thorin",
-            "Fireball",
-            "Ice Bolt",
-            "Shadow Strike",
-            "Heal",
-            "Lightning",
-            "Curse",
-            "Poison",
-            "Dwarf",
-            "Elf",
-            "Human",
-            "Orc",
-            "Troll",
-            "Goblin",
-            "Ogre",
-            "Wizard",
-            "Warlock",
-            "Sorcerer",
-            "Knight",
-            "Paladin",
-            "Sword",
-            "Axe",
-            "Bow",
-            "Staff",
-            "Shield",
-            "Wand",
-            "Wolf",
-            "Dragon",
-            "Bear",
-            "Lion",
-            "Eagle",
-            "Hawk",
-            "Snake",
-            "Scorpion",
-        ]
+        return generate_cards(count)
 
-        creatures = [
-            "Giant",
-            "Dragon",
-            "Troll",
-            "Goblin",
-            "Ogre",
-            "Wizard",
-            "Warlock",
-            "Sorcerer",
-            "Knight",
-            "Paladin",
-            "Sword",
-            "Axe",
-            "Bow",
-            "Staff",
-            "Shield",
-            "Wand",
-            "Wolf",
-            "Dragon",
-            "Bear",
-        ]
+    def _refill_market(self, game: Game) -> None:
+        missing_cards_count = self._default_market_size - len(game.market_deck.cards)
+        if missing_cards_count <= 0:
+            return
 
-        cards = []
-        for i in range(count):
-            title = titles[i]
-            card = Card(
-                id=uuid4(),
-                title=title,
-                creature=creatures[i % len(creatures)],
-                power=random.randint(1, 5),
-                echo=random.randint(0, 3),
-                cost=random.randint(1, 5),
-                cool_points=random.randint(0, 3),
-            )
-            cards.append(card)
-
-        return cards
+        cards = game.game_deck.cards[:missing_cards_count]
+        game.market_deck.cards.extend(cards)
+        del game.game_deck.cards[: len(cards)]

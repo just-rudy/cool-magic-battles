@@ -1,0 +1,12 @@
+database:
+  # Переопределяется через DATABASE_URL в .env (см. env.example)
+  # Локально без Docker (peer auth, пользователь ОС = владелец БД):
+  url: "postgresql+psycopg:///cool_magic_battles"
+
+game:
+  default_hand_size: 5
+  default_market_size: 5
+  default_base_health: 20
+
+logging:
+  file: "logs/app.log"

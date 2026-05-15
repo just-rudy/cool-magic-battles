@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Segoe UI", system-ui, sans-serif;
+  --color-arcane-950: #0b0618;
+  --color-arcane-900: #140a2b;
+  --color-arcane-800: #1f1140;
+  --color-arcane-700: #2d1a5c;
+  --color-arcane-500: #7c4dff;
+  --color-arcane-400: #b388ff;
+  --color-arcane-300: #d1b3ff;
+  --color-gold-400: #ffd54f;
+  --color-gold-500: #ffb300;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-display);
+  color: #f4efff;
+  background:
+    radial-gradient(circle at top, rgba(124, 77, 255, 0.25), transparent 40%),
+    linear-gradient(180deg, var(--color-arcane-950), var(--color-arcane-900));
+}
+
+#root {
+  min-height: 100vh;
+}

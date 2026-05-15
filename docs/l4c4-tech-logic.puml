@@ -1,0 +1,144 @@
+@startuml c4-l4-bl-part.puml
+
+title L4 (Code) - Business Logic Component
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+package "Bootstrap" {
+
+  class Container {
+    + build_console_app(): ConsoleApp
+  }
+
+  class Config {
+    + db_url: str
+    + default_hand_size: int
+    + log_level: str
+  }
+}
+
+package "Business Logic Component" {
+
+  class GameLogic {
+    - _repo: GameRepository
+    - _us_repo: UserRepository
+    - _card_logic: CardLogic
+    - _deck_service: DeckService
+    - _state: GameStateManager
+    - _default_hand_size: int
+
+    + create_game(host_user_id: UUID): Game
+    + start_game(game_id: UUID): str
+    + join_game(game_id: UUID, user_id: UUID): Player
+    + buy_card(game_id: UUID, player_id: UUID, card_id: UUID): str
+    + play_card(game_id: UUID, player_id: UUID, card_id: UUID): str
+    + end_turn(game_id: UUID, player_id: UUID): str
+
+    + show_hand(game_id: UUID, player_id: UUID): list
+    + show_market(game_id: UUID): list
+    + show_game_state(game_id: UUID): dict
+  }
+
+  class CardLogic {
+    + can_purchase(player: Player, card: Card): bool
+    + can_be_played(player: Player, card: Card): bool
+  }
+
+  class DeckService {
+    + draw(deck: Deck, num: int): list[Card]
+    + shuffle(deck: Deck): void
+    + refill_draw_from_discard(player: Player): void
+  }
+
+  class GameStateManager {
+    + validate_turn(game: Game, player_id: UUID): bool
+    + next_turn(game: Game): void
+  }
+}
+
+package "Controllers" {
+
+  class GameController
+  class UserController
+  class CardController
+}
+
+package "Repositories" {
+
+  interface GameRepository {
+    + get(game_id: UUID): Game
+    + save(game: Game): void
+  }
+
+  interface UserRepository {
+    + get(user_id: UUID): User
+  }
+
+  interface CardRepository {
+    + get(card_id: UUID): Card
+    + list(): list[Card]
+  }
+}
+
+package "Infrastructure" {
+
+  class Logger
+  class PostgreSQLDatabase
+}
+
+package "Domain Entities" {
+
+  class Game
+  class Player
+  class Deck
+  class Card
+  class User
+}
+
+package "Enums" {
+
+  enum GameStatus
+  enum DeckType
+}
+
+Container ..> Config
+Container ..> GameLogic
+Container ..> Logger
+
+GameController ..> GameLogic
+UserController ..> UserRepository
+CardController ..> CardRepository
+
+GameLogic ..> GameRepository : uses
+GameLogic ..> UserRepository : uses
+GameLogic ..> CardLogic : uses
+GameLogic ..> DeckService : uses
+GameLogic ..> GameStateManager : uses
+GameLogic ..> Logger : logs
+
+GameRepository ..> PostgreSQLDatabase
+UserRepository ..> PostgreSQLDatabase
+CardRepository ..> PostgreSQLDatabase
+
+GameRepository ..> Game
+UserRepository ..> User
+CardRepository ..> Card
+
+CardLogic ..> Player
+CardLogic ..> Card
+
+DeckService ..> Deck
+DeckService ..> Card
+
+GameStateManager ..> Game
+
+Game "1" *-- "0..*" Player
+Deck "1" *-- "0..*" Card
+
+Game ..> GameStatus
+Deck ..> DeckType
+
+@enduml

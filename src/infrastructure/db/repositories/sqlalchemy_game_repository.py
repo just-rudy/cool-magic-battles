@@ -1,11 +1,12 @@
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from application.interfaces.game_repository import GameRepository
 from domain.entities import Card, Deck, Game, Player
 from domain.enums import DeckType
+from infrastructure.db.exceptions import EntityNotFoundError, PersistenceError
 from infrastructure.db.mappers.card_mapper import CardMapper
 from infrastructure.db.mappers.game_mapper import GameMapper
 from infrastructure.db.mappers.player_mapper import PlayerMapper
@@ -16,7 +17,6 @@ from infrastructure.db.models import (
     GameModel,
     PlayerModel,
 )
-from infrastructure.db.exceptions import EntityNotFoundError, PersistenceError
 
 
 class SqlAlchemyGameRepository(GameRepository):
@@ -43,12 +43,15 @@ class SqlAlchemyGameRepository(GameRepository):
 
         self._session.query(DeckCardModel).filter(
             DeckCardModel.deck_id == deck.id
-        ).delete()
+        ).delete(synchronize_session=False)
+        deck_model.deck_cards = []
+        self._session.flush()
 
         for position, card in enumerate(deck.cards):
             card_model = self._session.get(CardModel, card.id)
             if card_model is None:
-                self._session.add(CardMapper.to_model(card))
+                card_model = CardMapper.to_model(card)
+                self._session.add(card_model)
             else:
                 card_model.title = card.title
                 card_model.creature = card.creature
@@ -57,10 +60,9 @@ class SqlAlchemyGameRepository(GameRepository):
                 card_model.cost = card.cost
                 card_model.cool_points = card.cool_points
 
-            self._session.add(
+            deck_model.deck_cards.append(
                 DeckCardModel(
-                    deck_id=deck.id,
-                    card_id=card.id,
+                    card=card_model,
                     position=position,
                 )
             )
@@ -68,18 +70,13 @@ class SqlAlchemyGameRepository(GameRepository):
         return deck.id
 
     def _load_deck(self, deck_model: DeckModel) -> Deck:
-        deck_cards = (
-            self._session.query(DeckCardModel)
-            .filter(DeckCardModel.deck_id == deck_model.id)
-            .order_by(DeckCardModel.position.asc())
-            .all()
-        )
         cards: list[Card] = []
-        for deck_card in deck_cards:
-            card_model = self._session.get(CardModel, deck_card.card_id)
+        for deck_card in deck_model.deck_cards:
+            card_model = deck_card.card
             if card_model is None:
                 raise EntityNotFoundError(
-                    f"card {deck_card.card_id} referenced by deck {deck_model.id} not found"
+                    f"card {deck_card.card_id} referenced by deck "
+                    f"{deck_model.id} not found"
                 )
             cards.append(CardMapper.to_domain(card_model))
 
@@ -102,6 +99,7 @@ class SqlAlchemyGameRepository(GameRepository):
                 model.status = game.status.value
                 model.cur_turn = game.cur_turn
                 model.cur_player_id = game.cur_player_id
+                model.winner_id = game.winner_id
 
             existing_players = {
                 player_model.id: player_model
@@ -134,14 +132,11 @@ class SqlAlchemyGameRepository(GameRepository):
                 if player_id not in players_ids:
                     self._session.delete(player_model)
 
-            all_player_ids = players_ids | set(existing_players.keys())
             existing_decks = {
                 deck_model.id: deck_model
                 for deck_model in self._session.query(DeckModel)
-                .filter(
-                    (DeckModel.game_id == game.id)
-                    | (DeckModel.player_id.in_(all_player_ids))
-                )
+                .options(selectinload(DeckModel.deck_cards))
+                .filter(DeckModel.game_id == game.id)
                 .all()
             }
             deck_ids = {
@@ -173,7 +168,7 @@ class SqlAlchemyGameRepository(GameRepository):
                     self._sync_deck(
                         player.draw_deck,
                         DeckType.DRAW,
-                        None,
+                        game.id,
                         player.id,
                         existing_decks,
                     )
@@ -182,7 +177,7 @@ class SqlAlchemyGameRepository(GameRepository):
                     self._sync_deck(
                         player.hand_deck,
                         DeckType.HAND,
-                        None,
+                        game.id,
                         player.id,
                         existing_decks,
                     )
@@ -191,7 +186,7 @@ class SqlAlchemyGameRepository(GameRepository):
                     self._sync_deck(
                         player.table_deck,
                         DeckType.TABLE,
-                        None,
+                        game.id,
                         player.id,
                         existing_decks,
                     )
@@ -200,7 +195,7 @@ class SqlAlchemyGameRepository(GameRepository):
                     self._sync_deck(
                         player.discard_deck,
                         DeckType.DISCARD,
-                        None,
+                        game.id,
                         player.id,
                         existing_decks,
                     )
@@ -240,6 +235,9 @@ class SqlAlchemyGameRepository(GameRepository):
         game = GameMapper.to_domain(model)
         player_models = (
             self._session.query(PlayerModel)
+            .options(
+                selectinload(PlayerModel.decks),
+            )
             .filter(PlayerModel.game_id == game.id)
             .order_by(PlayerModel.turn_order.asc())
             .all()
@@ -247,16 +245,20 @@ class SqlAlchemyGameRepository(GameRepository):
         game.players = [
             PlayerMapper.to_domain(player_model) for player_model in player_models
         ]
-        players_by_id: dict[UUID, Player] = {player.id: player for player in game.players}
+        players_by_id: dict[UUID, Player] = {
+            player.id: player for player in game.players
+        }
 
-        player_ids = list(players_by_id.keys())
-        deck_query = self._session.query(DeckModel).filter(DeckModel.game_id == game.id)
-        if player_ids:
-            deck_query = deck_query.union(
-                self._session.query(DeckModel).filter(DeckModel.player_id.in_(player_ids))
+        deck_models = (
+            self._session.query(DeckModel)
+            .options(
+                selectinload(DeckModel.deck_cards).selectinload(DeckCardModel.card),
             )
+            .filter(DeckModel.game_id == game.id)
+            .all()
+        )
 
-        for deck_model in deck_query.all():
+        for deck_model in deck_models:
             deck = self._load_deck(deck_model)
             if deck_model.player_id is None:
                 if deck.type == DeckType.MARKET:
@@ -299,11 +301,3 @@ class SqlAlchemyGameRepository(GameRepository):
 
     def exists(self, game_id: UUID) -> bool:
         return self._session.get(GameModel, game_id) is not None
-
-
-# which user? id: 34d5a8c0-c574-4204-9b38-889305c4731f
-# REAL DB ERROR: (sqlite3.IntegrityError) UNIQUE constraint failed: players.game_id, players.turn_order
-# [SQL: INSERT INTO players (id, game_id, user_id, nickname, turn_order, health, base_echo, cur_echo, hand_size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)]
-# [parameters: ('f6854f3cedc242f9a38e36cd1f6074ed', '84914bfbdb0642e6a4d635f62d0179c4', '34d5a8c0c57442049b38889305c4731f', 'winch', 0, 20, 0, 0, 5)]
-# (Background on this error at: https://sqlalche.me/e/20/gkpj)
-# err: failed to save game - integrity constraint violated

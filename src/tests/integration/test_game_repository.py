@@ -1,8 +1,10 @@
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
+
 from domain.entities import Card, Game, Player, User
 from domain.enums import DeckType, GameStatus
+from infrastructure.db.models import DeckCardModel, DeckModel
 from infrastructure.db.repositories.sqlalchemy_game_repository import (
     SqlAlchemyGameRepository,
 )
@@ -36,6 +38,31 @@ def test_save_and_get_game_with_players(session: Session) -> None:
     assert loaded.players[0].nickname == "host"
 
 
+def test_save_and_get_game_with_winner(session: Session) -> None:
+    user_repo = SqlAlchemyUserRepository(session)
+    game_repo = SqlAlchemyGameRepository(session)
+
+    host = User(id=uuid4(), username="host")
+    guest = User(id=uuid4(), username="guest")
+    user_repo.save(host)
+    user_repo.save(guest)
+
+    winner = Player(id=uuid4(), user_id=host.id, nickname="host", turn_order=0)
+    loser = Player(id=uuid4(), user_id=guest.id, nickname="guest", turn_order=1)
+    game = Game(
+        id=uuid4(),
+        host_user_id=host.id,
+        status=GameStatus.FINISHED,
+        winner_id=winner.id,
+    )
+    game.players.extend([winner, loser])
+
+    game_repo.save(game)
+    loaded = game_repo.get(game.id)
+
+    assert loaded.winner_id == winner.id
+
+
 def test_save_and_get_game_with_decks_and_cards(session: Session) -> None:
     user_repo = SqlAlchemyUserRepository(session)
     game_repo = SqlAlchemyGameRepository(session)
@@ -62,6 +89,22 @@ def test_save_and_get_game_with_decks_and_cards(session: Session) -> None:
     player.discard_deck.type = DeckType.DISCARD
 
     game_repo.save(game)
+
+    deck_models = session.query(DeckModel).filter(DeckModel.game_id == game.id).all()
+    assert len(deck_models) == 7
+    assert {deck.type for deck in deck_models if deck.player_id is None} == {
+        DeckType.MARKET.value,
+        DeckType.DECK.value,
+        DeckType.BANISH.value,
+    }
+    assert {deck.type for deck in deck_models if deck.player_id == player.id} == {
+        DeckType.DRAW.value,
+        DeckType.HAND.value,
+        DeckType.TABLE.value,
+        DeckType.DISCARD.value,
+    }
+    assert session.query(DeckCardModel).count() == 3
+
     loaded = game_repo.get(game.id)
 
     assert loaded.market_deck.cards[0].title == "Market"

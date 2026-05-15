@@ -2,16 +2,15 @@ import logging
 from pathlib import Path
 
 
-def setup_logging() -> None:
-    log_dir = Path("logs")
-    log_dir.mkdir(exist_ok=True)
+def setup_logging(log_file: str | Path = "logs/app.log") -> None:
+    log_path = Path(log_file)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
 
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
         handlers=[
-            logging.FileHandler(log_dir / "app.log", encoding="utf-8"),
-            # logging.StreamHandler(),
+            logging.FileHandler(log_path, encoding="utf-8"),
         ],
     )
 
