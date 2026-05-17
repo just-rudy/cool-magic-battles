@@ -1,4 +1,5 @@
 from uuid import UUID
+
 from rich.console import Console
 
 from infrastructure.ui.console.formatters import format_warn
@@ -43,5 +44,5 @@ def read_uuid_optional(prompt: str, cnsl: Console) -> UUID | None:
         return None
     try:
         return UUID(raw)
-    except ValueError:
-        raise ValueError(f"invalid {prompt[:-2].strip()}")
+    except ValueError as err:
+        raise ValueError(f"invalid {prompt[:-2].strip()}") from err

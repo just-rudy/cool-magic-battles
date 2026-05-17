@@ -1,6 +1,6 @@
-from fastapi import FastAPI
-from uuid import UUID
 from typing import Any
+
+from fastapi import FastAPI
 
 app = FastAPI()
 

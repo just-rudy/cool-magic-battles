@@ -1,5 +1,5 @@
-from uuid import UUID
 from typing import Any
+from uuid import UUID
 
 from application.interfaces.card_repository import CardRepository
 from domain.entities import Card

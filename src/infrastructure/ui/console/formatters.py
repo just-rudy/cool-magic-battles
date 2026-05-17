@@ -1,16 +1,15 @@
 from __future__ import annotations
-from collections.abc import Sequence
 
+from collections.abc import Sequence
 from typing import Any, cast
 from uuid import UUID
 
-from domain.entities import User, Player
-
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from rich.markup import escape
 
+from domain.entities import Player, User
 from infrastructure.ui.console.id_utils import short_id
 
 

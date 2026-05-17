@@ -1,4 +1,4 @@
-from typing import Callable
+from collections.abc import Callable
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -6,7 +6,6 @@ import pytest
 from pytest import MonkeyPatch
 
 from application.services import CardLogic, DeckService, GameLogic, GameStateManager
-
 from domain.entities import Card, Deck, Game, Player, User
 from domain.enums import GameStatus
 

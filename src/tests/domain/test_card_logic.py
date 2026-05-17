@@ -1,6 +1,6 @@
-from application.services import CardLogic
-from typing import Callable
+from collections.abc import Callable
 
+from application.services import CardLogic
 from domain.entities import Card, Player
 
 

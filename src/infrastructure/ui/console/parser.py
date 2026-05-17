@@ -39,7 +39,7 @@ def parse_instruction(raw: str) -> ParsedInstruction:
     instr = ParsedInstruction(task=raw_parts[0])
     fields = COMMAND_FIELDS.get(raw_parts[0], [])
 
-    for field, value in zip(fields, raw_parts[1:]):
+    for field, value in zip(fields, raw_parts[1:], strict=False):
         setattr(instr, field, value)
 
     return instr

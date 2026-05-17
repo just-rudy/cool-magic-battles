@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from uuid import UUID, uuid4
+
 from .deck import Deck
 
 
@@ -14,7 +15,8 @@ class Player:
     cur_echo: int = 0
     hand_size: int = 5
     # decks will be moved later, here for simplicity
-    # Player.draw_deck в БД соответствует записи Decks, где owner_player_id = Player.id и type = 'draw'
+    # Player.draw_deck в БД соответствует записи Decks,
+    # где owner_player_id = Player.id и type = 'draw'
     draw_deck: Deck = field(default_factory=lambda: Deck(id=uuid4()))
     hand_deck: Deck = field(default_factory=lambda: Deck(id=uuid4()))
     table_deck: Deck = field(default_factory=lambda: Deck(id=uuid4()))

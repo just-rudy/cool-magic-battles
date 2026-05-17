@@ -3,19 +3,17 @@
 from rich.console import Console
 
 # from domain.entities import Game, Player, User
-
 from application.controllers.card_controller import CardController
 from application.controllers.game_controller import GameController
 from application.controllers.user_controller import UserController
+from infrastructure.logging.logger import get_logger
+from infrastructure.ui.console.handlers import ConsoleHandler
 
 # from infrastructure.shared.validators import if_uuid_str
 from infrastructure.ui.console.menu import print_menu
-from infrastructure.ui.console.prompts import read_instruction
 from infrastructure.ui.console.parser import parse_instruction
-
-from infrastructure.ui.console.handlers import ConsoleHandler
+from infrastructure.ui.console.prompts import read_instruction
 from infrastructure.ui.console.state import ConsoleState
-from infrastructure.logging.logger import get_logger
 
 logger = get_logger("ui.console")
 

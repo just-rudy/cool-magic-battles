@@ -1,8 +1,8 @@
-from uuid import UUID, uuid4
 from typing import Any
+from uuid import UUID, uuid4
 
-from domain.entities import User
 from application.interfaces.user_repository import UserRepository
+from domain.entities import User
 
 
 class UserController:

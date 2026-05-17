@@ -2,8 +2,8 @@ from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
-from application.interfaces.card_repository import CardRepository
 
+from application.interfaces.card_repository import CardRepository
 from domain.entities import Card
 from infrastructure.db.exceptions import (
     EntityNotFoundError,

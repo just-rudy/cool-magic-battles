@@ -1,8 +1,8 @@
 from uuid import uuid4
 
 import pytest
-
 from sqlalchemy.orm import Session
+
 from domain.entities import Card
 from infrastructure.db.exceptions.validation_errors import EntityValidationError
 from infrastructure.db.repositories.sqlalchemy_card_repository import (

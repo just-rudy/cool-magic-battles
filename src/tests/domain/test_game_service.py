@@ -7,7 +7,6 @@ from application.services.card_logic import CardLogic
 from application.services.deck_service import DeckService
 from application.services.game_service import GameAppService
 from application.services.game_state_manager import GameStateManager
-from domain.entities import Game, Player
 from domain.enums import GameStatus
 
 

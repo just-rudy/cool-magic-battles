@@ -2,8 +2,8 @@ from uuid import UUID
 
 # from domain.entities.game import Game
 from domain.enums import GameStatus
-from infrastructure.db.models import GameModel
 from infrastructure.db.mappers.game_mapper import GameMapper
+from infrastructure.db.models import GameModel
 
 game_model = GameModel(
     id=UUID("11111111-1111-1111-1111-111111111111"),

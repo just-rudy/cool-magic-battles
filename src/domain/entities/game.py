@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
 from uuid import UUID, uuid4
 
-from .player import Player
-from .deck import Deck
 from domain.enums import GameStatus
+
+from .deck import Deck
+from .player import Player
 
 
 @dataclass

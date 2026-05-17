@@ -1,4 +1,5 @@
 from sqlalchemy.engine import Engine
+
 from infrastructure.db.base import Base
 
 

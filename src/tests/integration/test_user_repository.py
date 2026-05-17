@@ -1,7 +1,6 @@
 from uuid import uuid4
 
 import pytest
-
 from sqlalchemy.orm import Session
 
 from domain.entities import User

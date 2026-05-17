@@ -7,8 +7,8 @@ from api.dependencies import get_game_service
 from application.dto.requests import (
     BuyCardRequest,
     CreateGameRequest,
-    FinishGameRequest,
     EndTurnRequest,
+    FinishGameRequest,
     JoinGameRequest,
     PlayCardRequest,
 )
