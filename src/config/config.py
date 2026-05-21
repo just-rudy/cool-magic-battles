@@ -24,10 +24,23 @@ class LoggingConfig:
 
 
 @dataclass(frozen=True)
+class MinioConfig:
+    endpoint: str
+    access_key: str
+    secret_key: str
+    bucket: str = "cards"
+    secure: bool = False
+    presign_ttl_seconds: int = 3600
+    public_base_url: str | None = None
+    auto_create_bucket: bool = True
+
+
+@dataclass(frozen=True)
 class Config:
     database: DatabaseConfig
     game: GameConfig
     logging: LoggingConfig
+    minio: MinioConfig
 
 
 def _load_env_file(env_path: Path = DEFAULT_ENV_PATH) -> None:
@@ -46,6 +59,20 @@ def _load_env_file(env_path: Path = DEFAULT_ENV_PATH) -> None:
 def _clean_yaml_value(value: str) -> str:
     value = value.strip()
     return value.strip("\"'")
+
+
+def _parse_bool(value: str | bool | None, default: bool) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    return default
 
 
 def _load_yaml_config(
@@ -84,6 +111,7 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> Config:
     database_config = file_config.get("database", {})
     game_config = file_config.get("game", {})
     logging_config = file_config.get("logging", {})
+    minio_config = file_config.get("minio", {})
     database_url = os.getenv("DATABASE_URL", database_config.get("url"))
 
     if database_url is None:
@@ -117,5 +145,44 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> Config:
         ),
         logging=LoggingConfig(
             file=os.getenv("LOG_FILE", logging_config.get("file", LoggingConfig.file))
+        ),
+        minio=MinioConfig(
+            endpoint=os.getenv(
+                "MINIO_ENDPOINT",
+                minio_config.get("endpoint", "localhost:9000"),
+            ),
+            access_key=os.getenv(
+                "MINIO_ACCESS_KEY",
+                minio_config.get("access_key", "minioadmin"),
+            ),
+            secret_key=os.getenv(
+                "MINIO_SECRET_KEY",
+                minio_config.get("secret_key", "minioadmin"),
+            ),
+            bucket=os.getenv("MINIO_BUCKET", minio_config.get("bucket", "cards")),
+            secure=_parse_bool(
+                os.getenv("MINIO_SECURE", minio_config.get("secure")),
+                MinioConfig.secure,
+            ),
+            presign_ttl_seconds=int(
+                os.getenv(
+                    "MINIO_PRESIGN_TTL_SECONDS",
+                    minio_config.get(
+                        "presign_ttl_seconds",
+                        str(MinioConfig.presign_ttl_seconds),
+                    ),
+                )
+            ),
+            public_base_url=os.getenv(
+                "MINIO_PUBLIC_BASE_URL",
+                minio_config.get("public_base_url"),
+            ),
+            auto_create_bucket=_parse_bool(
+                os.getenv(
+                    "MINIO_AUTO_CREATE_BUCKET",
+                    minio_config.get("auto_create_bucket"),
+                ),
+                MinioConfig.auto_create_bucket,
+            ),
         ),
     )

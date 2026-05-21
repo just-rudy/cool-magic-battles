@@ -5,10 +5,19 @@ from uuid import UUID
 from pydantic import BaseModel
 
 
+class ImageResponse(BaseModel):
+    id: UUID
+    title: str
+    file: str | None
+    url: str | None = None
+
+
 class CardResponse(BaseModel):
     id: UUID
     title: str
     creature: str
+    image_id: UUID
+    image: ImageResponse | None
     power: int
     echo: int
     cost: int

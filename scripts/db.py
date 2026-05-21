@@ -60,21 +60,28 @@ def cmd_stamp(_: argparse.Namespace) -> int:
     return _run_alembic(["stamp", "head"])
 
 
-def cmd_seed(args: argparse.Namespace) -> int:
+def _make_session_factory():
     sys.path.insert(0, str(SRC))
 
-    from uuid import uuid4
-
-    from sqlalchemy import create_engine, func, select
+    from sqlalchemy import create_engine
     from sqlalchemy.orm import Session, sessionmaker
 
-    from application.services.card_factory import generate_cards
     from config.config import load_config
-    from infrastructure.db.models import CardModel, UserModel
 
     config = load_config()
     engine = create_engine(config.database.url, future=True)
-    SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, class_=Session)
+    return sessionmaker(bind=engine, expire_on_commit=False, class_=Session)
+
+
+def cmd_seed(args: argparse.Namespace) -> int:
+    from uuid import uuid4
+
+    from sqlalchemy import func, select
+
+    from application.services.card_factory import generate_cards, list_card_types
+    from infrastructure.db.models import CardModel, CardTypeModel, UserModel
+
+    SessionLocal = _make_session_factory()
 
     seed_users = [
         ("gandalf", uuid4()),
@@ -96,6 +103,23 @@ def cmd_seed(args: argparse.Namespace) -> int:
         session.commit()
 
     with SessionLocal() as session:
+        existing_card_type_ids = set(session.scalars(select(CardTypeModel.id)))
+        for card_type in list_card_types():
+            if card_type.id in existing_card_type_ids:
+                continue
+            session.add(
+                CardTypeModel(
+                    id=card_type.id,
+                    action=card_type.action.value,
+                    usage_pattern=card_type.usage_pattern.value,
+                    if_permanent=card_type.if_permanent,
+                    color=card_type.color,
+                )
+            )
+
+        session.commit()
+
+    with SessionLocal() as session:
         current_count = session.scalar(select(func.count()).select_from(CardModel)) or 0
         print(f"Current cards in db: {current_count}")
         target_count = args.cards
@@ -110,6 +134,7 @@ def cmd_seed(args: argparse.Namespace) -> int:
                         id=card.id,
                         title=card.title,
                         creature=card.creature,
+                        card_type_id=card.card_type_id,
                         power=card.power,
                         echo=card.echo,
                         cost=card.cost,
@@ -120,6 +145,55 @@ def cmd_seed(args: argparse.Namespace) -> int:
             print(f"  add   {to_add} cards")
 
     print("Seed complete.")
+    return 0
+
+
+def cmd_truncate(args: argparse.Namespace) -> int:
+    from sqlalchemy import MetaData, text
+
+    SessionLocal = _make_session_factory()
+    metadata = MetaData()
+
+    with SessionLocal() as session:
+        metadata.reflect(bind=session.get_bind())
+
+        if args.table not in metadata.tables:
+            available_tables = ", ".join(sorted(metadata.tables))
+            raise ValueError(
+                f"unknown table '{args.table}'. Available tables: {available_tables}"
+            )
+
+        cascade_sql = " CASCADE" if args.cascade else ""
+        session.execute(text(f'TRUNCATE TABLE "{args.table}"{cascade_sql}'))
+        session.commit()
+
+    print(f"Table '{args.table}' truncated.")
+    return 0
+
+
+def cmd_truncate_all(args: argparse.Namespace) -> int:
+    from sqlalchemy import MetaData, text
+
+    SessionLocal = _make_session_factory()
+    metadata = MetaData()
+
+    with SessionLocal() as session:
+        metadata.reflect(bind=session.get_bind())
+
+        table_names = sorted(
+            table_name
+            for table_name in metadata.tables
+            if args.include_alembic or table_name != "alembic_version"
+        )
+        if not table_names:
+            print("No tables to truncate.")
+            return 0
+
+        joined_tables = ", ".join(f'"{table_name}"' for table_name in table_names)
+        session.execute(text(f"TRUNCATE TABLE {joined_tables} CASCADE"))
+        session.commit()
+
+    print(f"Truncated tables: {', '.join(table_names)}")
     return 0
 
 
@@ -138,6 +212,22 @@ def main() -> int:
         type=int,
         default=100,
         help="Number of card records to populate in the database",
+    )
+    p_truncate = sub.add_parser("truncate", help="Delete all rows from a table")
+    p_truncate.add_argument("table", help="Table name to truncate")
+    p_truncate.add_argument(
+        "--cascade",
+        action="store_true",
+        help="Also truncate dependent tables via CASCADE",
+    )
+    p_truncate_all = sub.add_parser(
+        "truncate-all",
+        help="Delete all rows from all tables in the current database",
+    )
+    p_truncate_all.add_argument(
+        "--include-alembic",
+        action="store_true",
+        help="Also truncate alembic_version",
     )
 
     p_down = sub.add_parser("downgrade", help="Rollback migrations")
@@ -164,6 +254,8 @@ def main() -> int:
         "current": cmd_current,
         "stamp": cmd_stamp,
         "seed": cmd_seed,
+        "truncate": cmd_truncate,
+        "truncate-all": cmd_truncate_all,
     }
     return handlers[args.command](args)
 

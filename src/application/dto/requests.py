@@ -29,3 +29,10 @@ class EndTurnRequest(BaseModel):
 
 class FinishGameRequest(BaseModel):
     player_id: UUID
+
+
+class UpdateCardImageRequest(BaseModel):
+    title: str | None = None
+    filename: str
+    content_base64: str
+    content_type: str = "application/octet-stream"

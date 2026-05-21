@@ -2,7 +2,7 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
-from domain.entities import Card, Game, Player, User
+from domain.entities import Card, Game, Image, Player, User
 from domain.enums import DeckType, GameStatus
 from infrastructure.db.models import DeckCardModel, DeckModel
 from infrastructure.db.repositories.sqlalchemy_game_repository import (
@@ -11,6 +11,14 @@ from infrastructure.db.repositories.sqlalchemy_game_repository import (
 from infrastructure.db.repositories.sqlalchemy_user_repository import (
     SqlAlchemyUserRepository,
 )
+
+
+def make_image(title: str) -> Image:
+    return Image(
+        id=uuid4(),
+        title=title,
+        file=f"cards/{title.lower()}.png",
+    )
 
 
 def test_save_and_get_game_with_players(session: Session) -> None:
@@ -75,9 +83,39 @@ def test_save_and_get_game_with_decks_and_cards(session: Session) -> None:
     game.players.append(player)
     game.cur_player_id = player.id
 
-    market_card = Card(id=uuid4(), title="Market", creature="Wizard", cost=2, echo=1)
-    hand_card = Card(id=uuid4(), title="Hand", creature="Knight", cost=1, echo=2)
-    draw_card = Card(id=uuid4(), title="Draw", creature="Dragon", cost=3, echo=0)
+    market_image = make_image("Market")
+    hand_image = make_image("Hand")
+    draw_image = make_image("Draw")
+    market_card = Card(
+        id=uuid4(),
+        title="Market",
+        creature="Wizard",
+        card_type_id=uuid4(),
+        image_id=market_image.id,
+        image=market_image,
+        cost=2,
+        echo=1,
+    )
+    hand_card = Card(
+        id=uuid4(),
+        title="Hand",
+        creature="Knight",
+        card_type_id=uuid4(),
+        image_id=hand_image.id,
+        image=hand_image,
+        cost=1,
+        echo=2,
+    )
+    draw_card = Card(
+        id=uuid4(),
+        title="Draw",
+        creature="Dragon",
+        card_type_id=uuid4(),
+        image_id=draw_image.id,
+        image=draw_image,
+        cost=3,
+        echo=0,
+    )
 
     game.market_deck.type = DeckType.MARKET
     game.market_deck.cards = [market_card]
@@ -108,5 +146,6 @@ def test_save_and_get_game_with_decks_and_cards(session: Session) -> None:
     loaded = game_repo.get(game.id)
 
     assert loaded.market_deck.cards[0].title == "Market"
+    assert loaded.market_deck.cards[0].image is not None
     assert loaded.players[0].hand_deck.cards[0].title == "Hand"
     assert loaded.players[0].draw_deck.cards[0].title == "Draw"

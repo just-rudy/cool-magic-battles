@@ -10,5 +10,10 @@ class CardLogic:
         return card in player.hand_deck.cards
 
     # TODO: card_effect
-    def apply_effect(self, player: Player, card: Card) -> None:
+    def apply_effect(
+        self,
+        player: Player,
+        card: Card,
+        target: Player | None = None,
+    ) -> None:
         player.cur_echo += card.echo

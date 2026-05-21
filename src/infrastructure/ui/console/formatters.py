@@ -163,6 +163,7 @@ def format_cards(cards: list[dict[str, Any]]) -> Table | Panel:
     table.add_column("#", justify="right")
     table.add_column("ID", style="dim")
     table.add_column("Title", style="cyan")
+    table.add_column("Image", style="magenta")
     table.add_column("Cost", justify="right")
     table.add_column("Power", justify="right")
     table.add_column("Echo", justify="right")
@@ -173,6 +174,7 @@ def format_cards(cards: list[dict[str, Any]]) -> Table | Panel:
             str(i),
             _fmt_id(card.get("id"), full=True),
             str(card.get("title")),
+            str(card.get("image_file") or card.get("image_title") or "-"),
             str(card.get("cost")),
             str(card.get("power")),
             str(card.get("echo")),

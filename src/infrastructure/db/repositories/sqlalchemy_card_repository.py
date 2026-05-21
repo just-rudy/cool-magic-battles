@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from application.interfaces.card_repository import CardRepository
 from domain.entities import Card
@@ -11,12 +11,28 @@ from infrastructure.db.exceptions import (
     PersistenceError,
 )
 from infrastructure.db.mappers.card_mapper import CardMapper
-from infrastructure.db.models import CardModel
+from infrastructure.db.mappers.image_mapper import ImageMapper
+from infrastructure.db.models import CardModel, ImageModel
 
 
 class SqlAlchemyCardRepository(CardRepository):
     def __init__(self, session: Session) -> None:
         self._session = session
+
+    def _sync_image(self, card: Card) -> None:
+        if card.image is None:
+            raise EntityValidationError("card image must be provided")
+        if card.image.id != card.image_id:
+            raise EntityValidationError("card image id must match image.id")
+
+        image_model = self._session.get(ImageModel, card.image_id)
+        if image_model is None:
+            image_model = ImageMapper.to_model(card.image)
+            self._session.add(image_model)
+            return
+
+        image_model.title = card.image.title
+        image_model.file = card.image.file
 
     def save(self, card: Card) -> None:
         if not card.title.strip():
@@ -26,6 +42,7 @@ class SqlAlchemyCardRepository(CardRepository):
         if card.cost < 0:
             raise EntityValidationError("card cost must be non-negative")
         try:
+            self._sync_image(card)
             model = self._session.get(CardModel, card.id)
             if model is None:
                 model = CardMapper.to_model(card)
@@ -33,11 +50,13 @@ class SqlAlchemyCardRepository(CardRepository):
             else:
                 model.title = card.title
                 model.creature = card.creature
+                model.card_type_id = card.card_type_id
+                model.image_id = card.image_id
                 model.power = card.power
                 model.echo = card.echo
                 model.cost = card.cost
                 model.cool_points = card.cool_points
-                self._session.commit()
+            self._session.commit()
         except IntegrityError as exc:
             self._session.rollback()
             raise PersistenceError(
@@ -48,7 +67,12 @@ class SqlAlchemyCardRepository(CardRepository):
             raise PersistenceError("failed to save card") from exc
 
     def get(self, card_id: UUID) -> Card:
-        model = self._session.get(CardModel, card_id)
+        model = (
+            self._session.query(CardModel)
+            .options(selectinload(CardModel.image))
+            .filter(CardModel.id == card_id)
+            .one_or_none()
+        )
         if model is None:
             raise EntityNotFoundError(f"card {card_id} not found")
         return CardMapper.to_domain(model)
@@ -70,12 +94,18 @@ class SqlAlchemyCardRepository(CardRepository):
         return model is not None
 
     def list_all(self) -> list[Card]:
-        models = self._session.query(CardModel).order_by(CardModel.title.asc()).all()
+        models = (
+            self._session.query(CardModel)
+            .options(selectinload(CardModel.image))
+            .order_by(CardModel.title.asc())
+            .all()
+        )
         return [CardMapper.to_domain(model) for model in models]
 
     def find_by_title(self, title: str) -> Card | None:
         model = (
             self._session.query(CardModel)
+            .options(selectinload(CardModel.image))
             .filter(CardModel.title == title)
             .one_or_none()
         )

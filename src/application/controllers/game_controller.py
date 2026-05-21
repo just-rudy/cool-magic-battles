@@ -62,6 +62,9 @@ class GameController:
             {
                 "id": str(card.id),
                 "title": card.title,
+                "image_id": str(card.image_id),
+                "image_title": card.image.title if card.image is not None else None,
+                "image_file": card.image.file if card.image is not None else None,
                 "cost": card.cost,
                 "power": card.power,
                 "echo": card.echo,
@@ -77,6 +80,9 @@ class GameController:
             {
                 "id": str(card.id),
                 "title": card.title,
+                "image_id": str(card.image_id),
+                "image_title": card.image.title if card.image is not None else None,
+                "image_file": card.image.file if card.image is not None else None,
                 "cost": card.cost,
                 "power": card.power,
                 "echo": card.echo,

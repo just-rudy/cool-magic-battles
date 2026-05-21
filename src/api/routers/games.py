@@ -15,6 +15,7 @@ from application.dto.requests import (
 from application.dto.responses import (
     CardResponse,
     GameResponse,
+    ImageResponse,
     PlayerResponse,
     WinnerResponse,
 )
@@ -31,6 +32,16 @@ def build_card_response(card: Card) -> CardResponse:
         id=card.id,
         title=card.title,
         creature=card.creature,
+        image_id=card.image_id,
+        image=(
+            ImageResponse(
+                id=card.image.id,
+                title=card.image.title,
+                file=card.image.file,
+            )
+            if card.image is not None
+            else None
+        ),
         power=card.power,
         echo=card.echo,
         cost=card.cost,

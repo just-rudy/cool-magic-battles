@@ -6,15 +6,21 @@ from sqlalchemy.orm import Session, selectinload
 from application.interfaces.game_repository import GameRepository
 from domain.entities import Card, Deck, Game, Player
 from domain.enums import DeckType
-from infrastructure.db.exceptions import EntityNotFoundError, PersistenceError
+from infrastructure.db.exceptions import (
+    EntityNotFoundError,
+    EntityValidationError,
+    PersistenceError,
+)
 from infrastructure.db.mappers.card_mapper import CardMapper
 from infrastructure.db.mappers.game_mapper import GameMapper
+from infrastructure.db.mappers.image_mapper import ImageMapper
 from infrastructure.db.mappers.player_mapper import PlayerMapper
 from infrastructure.db.models import (
     CardModel,
     DeckCardModel,
     DeckModel,
     GameModel,
+    ImageModel,
     PlayerModel,
 )
 
@@ -22,6 +28,21 @@ from infrastructure.db.models import (
 class SqlAlchemyGameRepository(GameRepository):
     def __init__(self, session: Session) -> None:
         self._session = session
+
+    def _sync_image(self, card: Card) -> None:
+        if card.image is None:
+            raise EntityValidationError("card image must be provided")
+        if card.image.id != card.image_id:
+            raise EntityValidationError("card image id must match image.id")
+
+        image_model = self._session.get(ImageModel, card.image_id)
+        if image_model is None:
+            image_model = ImageMapper.to_model(card.image)
+            self._session.add(image_model)
+            return
+
+        image_model.title = card.image.title
+        image_model.file = card.image.file
 
     def _sync_deck(
         self,
@@ -48,6 +69,7 @@ class SqlAlchemyGameRepository(GameRepository):
         self._session.flush()
 
         for position, card in enumerate(deck.cards):
+            self._sync_image(card)
             card_model = self._session.get(CardModel, card.id)
             if card_model is None:
                 card_model = CardMapper.to_model(card)
@@ -55,6 +77,8 @@ class SqlAlchemyGameRepository(GameRepository):
             else:
                 card_model.title = card.title
                 card_model.creature = card.creature
+                card_model.card_type_id = card.card_type_id
+                card_model.image_id = card.image_id
                 card_model.power = card.power
                 card_model.echo = card.echo
                 card_model.cost = card.cost
@@ -252,7 +276,9 @@ class SqlAlchemyGameRepository(GameRepository):
         deck_models = (
             self._session.query(DeckModel)
             .options(
-                selectinload(DeckModel.deck_cards).selectinload(DeckCardModel.card),
+                selectinload(DeckModel.deck_cards)
+                .selectinload(DeckCardModel.card)
+                .selectinload(CardModel.image),
             )
             .filter(DeckModel.game_id == game.id)
             .all()

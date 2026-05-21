@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from domain.entities import Card, Deck, Game, Player, User
+from domain.entities import Card, Deck, Game, Image, Player, User
 from domain.enums import DeckType, GameStatus
 
 
@@ -17,15 +17,21 @@ def make_card() -> Callable[..., Card]:
         echo: int = 1,
         cost: int = 3,
         cool_points: int = 0,
+        image_title: str = "Test image",
+        image_file: str | None = "cards/test-card.png",
     ) -> Card:
+        image = Image(id=uuid4(), title=image_title, file=image_file)
         return Card(
             id=uuid4(),
             title=title,
             creature=creature,
+            card_type_id=uuid4(),
+            image_id=image.id,
             power=power,
             echo=echo,
             cost=cost,
             cool_points=cool_points,
+            image=image,
         )
 
     return _make_card
