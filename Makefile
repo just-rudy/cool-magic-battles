@@ -1,4 +1,4 @@
-.PHONY: help db-up db-down db-wait db-migrate db-seed db-reset install run-api run-frontend
+.PHONY: help db-up db-down db-wait db-migrate db-seed db-reset db-truncate db-truncate-all install run-api run-frontend
 
 # docker compose (v2 plugin) или docker-compose (v1)
 ifeq ($(shell docker compose version >/dev/null 2>&1 && echo yes),yes)
@@ -19,6 +19,8 @@ help:
 	@echo "  make db-migrate    - apply Alembic migrations"
 	@echo "  make db-seed       - insert demo users"
 	@echo "  make db-reset      - downgrade + migrate + seed"
+	@echo "  make db-truncate   - truncate table: make db-truncate TABLE=cards [CASCADE=1]"
+	@echo "  make db-truncate-all - truncate all tables in current DB"
 	@echo "  make run-api       - FastAPI on :8000"
 	@echo "  make run-frontend  - Vite dev server on :5173"
 
@@ -53,6 +55,13 @@ db-reset:
 	PYTHONPATH=src python3 scripts/db.py downgrade
 	PYTHONPATH=src python3 scripts/db.py upgrade
 	$(MAKE) db-seed
+
+db-truncate:
+	@test -n "$(TABLE)" || (echo "Usage: make db-truncate TABLE=<table> [CASCADE=1]" && exit 1)
+	PYTHONPATH=src python3 scripts/db.py truncate "$(TABLE)" $(if $(CASCADE),--cascade)
+
+db-truncate-all:
+	PYTHONPATH=src python3 scripts/db.py truncate-all
 
 # Если таблицы уже созданы вручную (create_all), но нет alembic_version:
 db-stamp:

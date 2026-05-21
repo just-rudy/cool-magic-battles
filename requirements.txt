@@ -17,6 +17,7 @@ packaging==26.2
 pathspec==1.1.0
 platformdirs==4.9.6
 pluggy==1.6.0
+minio>=7,<8
 pydantic==2.13.3
 pydantic_core==2.46.3
 Pygments==2.20.0
