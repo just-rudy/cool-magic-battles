@@ -1,7 +1,16 @@
+export interface CardImage {
+  id: string
+  title: string
+  file: string | null
+  url: string | null
+}
+
 export interface Card {
   id: string
   title: string
   creature: string
+  image_id: string
+  image: CardImage | null
   power: number
   echo: number
   cost: number

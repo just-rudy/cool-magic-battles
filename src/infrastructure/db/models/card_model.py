@@ -15,7 +15,7 @@ class CardModel(Base):
     __tablename__ = "cards"
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
-    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
     creature: Mapped[str] = mapped_column(String(100), nullable=False)
     card_type_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     image_id: Mapped[UUID] = mapped_column(

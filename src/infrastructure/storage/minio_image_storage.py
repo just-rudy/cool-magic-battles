@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import timedelta
 from io import BytesIO
-from types import TracebackType
 from typing import Any
 from urllib.parse import quote
 
@@ -44,7 +43,8 @@ class MinioImageStorage(ImageStorage):
         if self._config.public_base_url:
             base_url = self._config.public_base_url.rstrip("/")
             return (
-                f"{base_url}/{quote(self._config.bucket)}/{quote(object_name, safe='/')}"
+                f"{base_url}/{quote(self._config.bucket)}/"
+                f"{quote(object_name, safe='/')}"
             )
 
         return self._client.presigned_get_object(
@@ -58,7 +58,8 @@ class MinioImageStorage(ImageStorage):
             from minio import Minio
         except ImportError as err:
             raise RuntimeError(
-                "MinIO client is not installed. Add the 'minio' package to the environment."
+                "MinIO client is not installed. "
+                "Add the 'minio' package to the environment."
             ) from err
 
         return Minio(

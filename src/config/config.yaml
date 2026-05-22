@@ -10,3 +10,15 @@ game:
 
 logging:
   file: "logs/app.log"
+
+minio:
+  endpoint: "localhost:9000"
+  access_key: "minioadmin"
+  secret_key: "minioadmin"
+  bucket: "cards"
+  secure: false
+  presign_ttl_seconds: 3600
+  auto_create_bucket: true
+  # Изображение-заглушка для карт без загруженного файла.
+  # Укажи object name (путь внутри bucket) нужного файла.
+  default_image_object: "cards/default.png"

@@ -1,4 +1,4 @@
-.PHONY: help db-up db-down db-wait db-migrate db-seed db-reset db-truncate db-truncate-all install run-api run-frontend
+.PHONY: help db-up db-down db-wait db-migrate db-seed db-reset db-truncate db-truncate-all minio-up minio-down minio-logs infra-up infra-down upload-default-image upload-card-images install run-api run-frontend
 
 # docker compose (v2 plugin) или docker-compose (v1)
 ifeq ($(shell docker compose version >/dev/null 2>&1 && echo yes),yes)
@@ -21,6 +21,12 @@ help:
 	@echo "  make db-reset      - downgrade + migrate + seed"
 	@echo "  make db-truncate   - truncate table: make db-truncate TABLE=cards [CASCADE=1]"
 	@echo "  make db-truncate-all - truncate all tables in current DB"
+	@echo "  make minio-up      - start MinIO on :9000 and console on :9001"
+	@echo "  make minio-down    - stop MinIO"
+	@echo "  make minio-logs    - tail MinIO logs"
+	@echo "  make infra-up      - start PostgreSQL + MinIO"
+	@echo "  make infra-down    - stop all Docker infrastructure"
+	@echo "  make upload-card-images DIR=assets/cards - upload images to cards by file name"
 	@echo "  make run-api       - FastAPI on :8000"
 	@echo "  make run-frontend  - Vite dev server on :5173"
 
@@ -30,8 +36,32 @@ install:
 db-up:
 	$(call DOCKER_RUN,up -d db)
 
+minio-up:
+	$(call DOCKER_RUN,up -d minio)
+
+infra-up:
+	$(call DOCKER_RUN,up -d db minio)
+
 db-down:
 	$(call DOCKER_RUN,down)
+
+minio-down:
+	$(call DOCKER_RUN,stop minio)
+
+infra-down:
+	$(call DOCKER_RUN,down)
+
+minio-logs:
+	$(call DOCKER_RUN,logs -f minio)
+
+upload-default-image:
+	@test -f assets/cards/default-image.png || (echo "File not found: assets/cards/default-image.png" && exit 1)
+	PYTHONPATH=src python3 scripts/upload_default_image.py
+
+upload-card-images:
+	@test -n "$(DIR)" || (echo "Usage: make upload-card-images DIR=<folder> [API_BASE_URL=http://localhost:8000/api/v1]" && exit 1)
+	API_BASE_URL=$(or $(API_BASE_URL),http://localhost:8000/api/v1) \
+		bash scripts/upload_card_images.sh "$(DIR)"
 
 db-wait:
 	@echo "Waiting for PostgreSQL..."
@@ -56,7 +86,10 @@ db-reset:
 	PYTHONPATH=src python3 scripts/db.py upgrade
 	$(MAKE) db-seed
 
-db-truncate:
+db-fix-card-images:
+	PYTHONPATH=src python3 scripts/db.py fix-card-images
+
+
 	@test -n "$(TABLE)" || (echo "Usage: make db-truncate TABLE=<table> [CASCADE=1]" && exit 1)
 	PYTHONPATH=src python3 scripts/db.py truncate "$(TABLE)" $(if $(CASCADE),--cascade)
 

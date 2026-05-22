@@ -33,6 +33,7 @@ class MinioConfig:
     presign_ttl_seconds: int = 3600
     public_base_url: str | None = None
     auto_create_bucket: bool = True
+    default_image_object: str | None = None
 
 
 @dataclass(frozen=True)
@@ -183,6 +184,10 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> Config:
                     minio_config.get("auto_create_bucket"),
                 ),
                 MinioConfig.auto_create_bucket,
+            ),
+            default_image_object=os.getenv(
+                "MINIO_DEFAULT_IMAGE_OBJECT",
+                minio_config.get("default_image_object"),
             ),
         ),
     )

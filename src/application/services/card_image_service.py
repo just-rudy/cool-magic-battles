@@ -1,5 +1,6 @@
 import base64
 import binascii
+import re
 from pathlib import PurePosixPath
 from uuid import UUID
 
@@ -7,11 +8,23 @@ from application.interfaces.card_repository import CardRepository
 from application.interfaces.image_storage import ImageStorage
 from domain.entities import Image
 
+# Паттерн пути для реально загруженных файлов: cards/<uuid>/<filename>
+_UPLOADED_PATH_RE = re.compile(
+    r"^cards/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/.+$",
+    re.IGNORECASE,
+)
+
 
 class CardImageService:
-    def __init__(self, card_repository: CardRepository, image_storage: ImageStorage) -> None:
+    def __init__(
+        self,
+        card_repository: CardRepository,
+        image_storage: ImageStorage,
+        default_image_object: str | None = None,
+    ) -> None:
         self._card_repository = card_repository
         self._image_storage = image_storage
+        self._default_image_object = default_image_object
 
     def upload_card_image(
         self,
@@ -59,9 +72,12 @@ class CardImageService:
         return self._card_repository.get(card_id)
 
     def get_image_url(self, object_name: str | None) -> str | None:
-        if not object_name:
-            return None
-        return self._image_storage.get_download_url(object_name)
+        if object_name and _UPLOADED_PATH_RE.match(object_name):
+            return self._image_storage.get_download_url(object_name)
+        # Файл не был загружен — возвращаем URL дефолтного изображения
+        if self._default_image_object:
+            return self._image_storage.get_download_url(self._default_image_object)
+        return None
 
     def _build_object_name(self, card_id: UUID, filename: str) -> str:
         clean_filename = PurePosixPath(filename).name

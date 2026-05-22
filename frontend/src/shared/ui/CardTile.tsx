@@ -16,6 +16,8 @@ export function CardTile({
   compact = false,
 }: CardTileProps) {
   const interactive = Boolean(onClick) && !disabled
+  const imageUrl = card.image?.url
+  const imageLabel = card.image?.title || card.title
 
   return (
     <button
@@ -33,10 +35,35 @@ export function CardTile({
           : 'cursor-default opacity-70',
       ].join(' ')}
     >
+      <div
+        className={[
+          'relative overflow-hidden rounded-lg border border-white/10 bg-arcane-950/80',
+          compact ? 'h-28' : 'h-40',
+        ].join(' ')}
+      >
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={imageLabel}
+            loading="lazy"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(179,136,255,0.28),_transparent_58%),linear-gradient(180deg,_rgba(31,17,64,0.96),_rgba(11,6,24,0.96))] px-3 text-center">
+            <span className="text-[11px] uppercase tracking-[0.28em] text-arcane-300">
+              {card.creature}
+            </span>
+          </div>
+        )}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-arcane-950 via-arcane-950/70 to-transparent px-3 pb-2 pt-6">
+          <span className="line-clamp-2 text-sm font-semibold text-white">
+            {card.title}
+          </span>
+        </div>
+      </div>
       <span className="text-[10px] uppercase tracking-[0.2em] text-arcane-300">
         {card.creature}
       </span>
-      <span className="mt-1 font-semibold text-white">{card.title}</span>
       <div
         className={[
           'mt-3 grid gap-1 text-xs text-arcane-300',

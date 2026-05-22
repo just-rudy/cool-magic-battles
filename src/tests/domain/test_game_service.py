@@ -16,14 +16,19 @@ def make_service(
     card_logic: Mock,
     deck_service: Mock,
     game_state_manager: Mock,
+    card_repository: Mock | None = None,
     default_market_size: int = 5,
 ) -> GameAppService:
+    if card_repository is None:
+        card_repository = Mock()
+        card_repository.list_all.return_value = []
     return GameAppService(
         game_repository=game_repository,
         user_repository=user_repository,
         card_logic=card_logic,
         deck_service=deck_service,
         game_state_manager=game_state_manager,
+        card_repository=card_repository,
         default_market_size=default_market_size,
     )
 

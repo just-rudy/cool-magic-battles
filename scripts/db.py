@@ -76,10 +76,10 @@ def _make_session_factory():
 def cmd_seed(args: argparse.Namespace) -> int:
     from uuid import uuid4
 
-    from sqlalchemy import func, select
+    from sqlalchemy import select
 
     from application.services.card_factory import generate_cards, list_card_types
-    from infrastructure.db.models import CardModel, CardTypeModel, UserModel
+    from infrastructure.db.models import CardModel, CardTypeModel, ImageModel, UserModel
 
     SessionLocal = _make_session_factory()
 
@@ -120,21 +120,36 @@ def cmd_seed(args: argparse.Namespace) -> int:
         session.commit()
 
     with SessionLocal() as session:
-        current_count = session.scalar(select(func.count()).select_from(CardModel)) or 0
+        existing_image_ids = set(session.scalars(select(ImageModel.id)))
+        existing_titles = set(session.scalars(select(CardModel.title)))
+        current_count = len(existing_titles)
         print(f"Current cards in db: {current_count}")
         target_count = args.cards
         if current_count >= target_count:
             print(f"  skip  card seed (already have {current_count} cards)")
         else:
+            # Генерируем достаточно карт, чтобы набрать нужное количество новых
+            all_cards = generate_cards(target_count)
+            new_cards = [c for c in all_cards if c.title not in existing_titles]
             to_add = target_count - current_count
-            cards = generate_cards(to_add)
-            for card in cards:
+            new_cards = new_cards[:to_add]
+            for card in new_cards:
+                if card.image is not None and card.image.id not in existing_image_ids:
+                    session.add(
+                        ImageModel(
+                            id=card.image.id,
+                            title=card.image.title,
+                            file=card.image.file,
+                        )
+                    )
+                    existing_image_ids.add(card.image.id)
                 session.add(
                     CardModel(
                         id=card.id,
                         title=card.title,
                         creature=card.creature,
                         card_type_id=card.card_type_id,
+                        image_id=card.image_id,
                         power=card.power,
                         echo=card.echo,
                         cost=card.cost,
@@ -142,9 +157,56 @@ def cmd_seed(args: argparse.Namespace) -> int:
                     )
                 )
             session.commit()
-            print(f"  add   {to_add} cards")
+            print(f"  add   {len(new_cards)} cards")
 
     print("Seed complete.")
+    return 0
+
+
+def cmd_fix_card_images(args: argparse.Namespace) -> int:
+    """Обновляет image_id у карт, у которых стоит дефолтное изображение,
+    и создаёт соответствующие записи в таблице images."""
+    from uuid import UUID
+
+    from sqlalchemy import select
+
+    from application.services.card_factory import _build_image
+    from infrastructure.db.models import CardModel, ImageModel
+
+    DEFAULT_IMAGE_ID = UUID("8156540c-f8aa-5f2a-aef6-3f2cca36bf45")
+
+    SessionLocal = _make_session_factory()
+
+    with SessionLocal() as session:
+        cards = session.query(CardModel).filter(
+            CardModel.image_id == DEFAULT_IMAGE_ID
+        ).all()
+
+        if not cards:
+            print("No cards with default image found — nothing to fix.")
+            return 0
+
+        print(f"Found {len(cards)} cards with default image, fixing...")
+
+        existing_image_ids = set(session.scalars(select(ImageModel.id)))
+        fixed = 0
+
+        for card in cards:
+            image = _build_image(card.title)
+            if image.id not in existing_image_ids:
+                session.add(ImageModel(
+                    id=image.id,
+                    title=image.title,
+                    file=image.file,
+                ))
+                existing_image_ids.add(image.id)
+            card.image_id = image.id
+            fixed += 1
+
+        session.commit()
+        print(f"  fixed {fixed} cards")
+
+    print("Done.")
     return 0
 
 
@@ -213,6 +275,10 @@ def main() -> int:
         default=100,
         help="Number of card records to populate in the database",
     )
+    sub.add_parser(
+        "fix-card-images",
+        help="Fix cards that have the default image by assigning per-card image records",
+    )
     p_truncate = sub.add_parser("truncate", help="Delete all rows from a table")
     p_truncate.add_argument("table", help="Table name to truncate")
     p_truncate.add_argument(
@@ -254,6 +320,7 @@ def main() -> int:
         "current": cmd_current,
         "stamp": cmd_stamp,
         "seed": cmd_seed,
+        "fix-card-images": cmd_fix_card_images,
         "truncate": cmd_truncate,
         "truncate-all": cmd_truncate_all,
     }

@@ -2,9 +2,9 @@ import random
 from uuid import UUID
 
 from application.dto.requests import CreateGameRequest
+from application.interfaces.card_repository import CardRepository
 from application.interfaces.game_repository import GameRepository
 from application.interfaces.user_repository import UserRepository
-from application.services.card_factory import generate_cards
 from application.services.card_logic import CardLogic
 from application.services.deck_service import DeckService
 from application.services.game_logic import GameLogic
@@ -20,9 +20,11 @@ class GameAppService:
         card_logic: CardLogic,
         deck_service: DeckService,
         game_state_manager: GameStateManager,
+        card_repository: CardRepository,
         default_market_size: int = 5,
     ) -> None:
         self._game_repository = game_repository
+        self._card_repository = card_repository
         self._default_market_size = default_market_size
         self._logic = GameLogic(
             game_repository=game_repository,
@@ -80,7 +82,13 @@ class GameAppService:
         del game.game_deck.cards[: len(cards)]
 
     def _generate_cards(self, count: int) -> list[Card]:
-        return generate_cards(count)
+        all_cards = self._card_repository.list_all()
+        if len(all_cards) < count:
+            raise ValueError(
+                f"Not enough cards in the database: need {count}, have {len(all_cards)}. "
+                "Run `make db-seed` to populate cards."
+            )
+        return random.sample(all_cards, count)
 
     def play_card(self, game_id: UUID, player_id: UUID, card_id: UUID) -> Game:
         self._logic.play_card(game_id, player_id, card_id)

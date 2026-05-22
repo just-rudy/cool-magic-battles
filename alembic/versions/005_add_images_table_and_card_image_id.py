@@ -1,6 +1,6 @@
 """add images table and image id to cards
 
-Revision ID: 005_add_images_table_and_card_image_id
+Revision ID: 005_card_images
 Revises: 004_add_card_type_id_to_cards
 Create Date: 2026-05-21
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "005_add_images_table_and_card_image_id"
+revision: str = "005_card_images"
 down_revision: str | None = "004_add_card_type_id_to_cards"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
