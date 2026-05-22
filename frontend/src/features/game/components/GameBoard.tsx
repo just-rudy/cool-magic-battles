@@ -28,8 +28,32 @@ export function GameBoard({ game, myPlayer }: GameBoardProps) {
     staleTime: Infinity,
   })
 
-  const actionError =
-    error instanceof Error ? error.message : error ? 'Ошибка действия' : null
+  // Извлекаем текст ошибки из разных типов ошибок
+  const getErrorMessage = (err: unknown): string | null => {
+    if (!err) return null
+
+    // Axios error с response.data.detail
+    if (typeof err === 'object' && err !== null && 'response' in err) {
+      const axiosError = err as { response?: { data?: { detail?: string } } }
+      if (axiosError.response?.data?.detail) {
+        return axiosError.response.data.detail
+      }
+    }
+
+    // Error object
+    if (err instanceof Error) {
+      return err.message
+    }
+
+    // String
+    if (typeof err === 'string') {
+      return err
+    }
+
+    return 'Произошла ошибка'
+  }
+
+  const actionError = getErrorMessage(error)
 
   return (
     <div className="space-y-8">
@@ -58,6 +82,20 @@ export function GameBoard({ game, myPlayer }: GameBoardProps) {
             Победитель: <span className="font-semibold">{game.winner.nickname}</span>
             {' '}· Очки крутости: {game.winner.cool_points}
             {' '}· Карт: {game.winner.cards_count}
+          </div>
+        )}
+
+        {game.pending_attack && (
+          <div className="mt-4 rounded-xl border border-red-400/40 bg-red-950/30 px-4 py-3 text-sm text-red-100">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⚔️</span>
+              <div>
+                <div className="font-semibold">Атака в процессе!</div>
+                <div className="text-xs text-red-200/80">
+                  Урон: {game.pending_attack.damage} · Защитник может сыграть DEF карту
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

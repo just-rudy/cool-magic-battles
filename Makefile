@@ -1,4 +1,4 @@
-.PHONY: help db-up db-down db-wait db-migrate db-seed db-reset db-truncate db-truncate-all minio-up minio-down minio-logs infra-up infra-down upload-default-image upload-card-images install run-api run-frontend
+.PHONY: help db-up db-down db-wait db-migrate db-seed db-reset db-reseed db-truncate db-truncate-all minio-up minio-down minio-logs infra-up infra-down upload-default-image upload-card-images upload-card-images-offline install run-api run-frontend run-all
 
 # docker compose (v2 plugin) или docker-compose (v1)
 ifeq ($(shell docker compose version >/dev/null 2>&1 && echo yes),yes)
@@ -19,6 +19,7 @@ help:
 	@echo "  make db-migrate    - apply Alembic migrations"
 	@echo "  make db-seed       - insert demo users"
 	@echo "  make db-reset      - downgrade + migrate + seed"
+	@echo "  make db-reseed     - truncate all tables + seed (faster than reset)"
 	@echo "  make db-truncate   - truncate table: make db-truncate TABLE=cards [CASCADE=1]"
 	@echo "  make db-truncate-all - truncate all tables in current DB"
 	@echo "  make minio-up      - start MinIO on :9000 and console on :9001"
@@ -29,6 +30,7 @@ help:
 	@echo "  make upload-card-images DIR=assets/cards - upload images to cards by file name"
 	@echo "  make run-api       - FastAPI on :8000"
 	@echo "  make run-frontend  - Vite dev server on :5173"
+	@echo "  make run-all       - run both API and frontend in parallel"
 
 install:
 	pip install -r requirements.txt
@@ -86,6 +88,10 @@ db-reset:
 	PYTHONPATH=src python3 scripts/db.py upgrade
 	$(MAKE) db-seed
 
+db-reseed:
+	PYTHONPATH=src .venv/bin/python scripts/db.py truncate-all
+	PYTHONPATH=src .venv/bin/python scripts/db.py seed
+
 db-fix-card-images:
 	PYTHONPATH=src python3 scripts/db.py fix-card-images
 
@@ -105,3 +111,12 @@ run-api:
 
 run-frontend:
 	cd frontend && npm run dev
+
+run-all:
+	@echo "Starting API and Frontend in parallel..."
+	@echo "API will be on http://localhost:8000"
+	@echo "Frontend will be on http://localhost:5173"
+	@echo "Press Ctrl+C to stop both"
+	@trap 'kill 0' EXIT; \
+		PYTHONPATH=src uvicorn api.app:app --reload --host 0.0.0.0 --port 8000 & \
+		cd frontend && npm run dev

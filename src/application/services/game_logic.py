@@ -1,13 +1,14 @@
 import random
 from uuid import UUID, uuid4
 
+from application.interfaces.card_type_repository import CardTypeRepository
 from application.interfaces.game_repository import GameRepository
 from application.interfaces.user_repository import UserRepository
 from application.services.card_logic import CardLogic
 from application.services.deck_service import DeckService
 from application.services.game_state_manager import GameStateManager
-from domain.entities import Card, Deck, Game, Player
-from domain.enums import GameStatus
+from domain.entities import Card, Deck, Game, PendingAttack, Player
+from domain.enums import CardAction, GameStatus, UsePattern
 
 
 class GameLogic:
@@ -18,12 +19,14 @@ class GameLogic:
         card_logic: CardLogic,
         deck_service: DeckService,
         game_state_manager: GameStateManager,
+        card_type_repository: CardTypeRepository | None = None,
     ) -> None:
         self._repo = game_repository
         self._us_repo = user_repository
         self._card_logic = card_logic
         self._deck_service = deck_service
         self._state = game_state_manager
+        self._card_type_repo = card_type_repository
 
     def _get_player(self, game: Game, player_id: UUID) -> Player:
         for player in game.players:
@@ -53,8 +56,6 @@ class GameLogic:
             cards = self._player_cards(player)
             cool_points = sum(card.cool_points for card in cards)
             cards_count = len(cards)
-            # Final fallback is deterministic because card type tie-breakers
-            # are not modeled in the current simplified domain yet.
             return (
                 cool_points,
                 cards_count,
@@ -129,7 +130,13 @@ class GameLogic:
 
         self._repo.save(game)
 
-    def play_card(self, game_id: UUID, player_id: UUID, card_id: UUID) -> None:
+    def play_card(
+        self,
+        game_id: UUID,
+        player_id: UUID,
+        card_id: UUID,
+        target_id: UUID | None = None,
+    ) -> None:
         game = self._repo.get(game_id)
         player = self._get_player(game, player_id)
 
@@ -144,17 +151,94 @@ class GameLogic:
         if not self._card_logic.can_be_played(player, card):
             raise ValueError("Card can't be played")
 
-        self._card_logic.apply_effect(player, card)
+        card_type = None
+        if self._card_type_repo is not None:
+            card_type = self._card_type_repo.get(card.card_type_id)
+
+        # DEF нельзя разыгрывать в свой ход — только через /defend
+        if card_type is not None and card_type.action == CardAction.DEF:
+            raise ValueError(
+                "DEF card can only be played as a reaction to an attack via /defend"
+            )
+
+        target: Player | None = None
+        if target_id is not None:
+            target = self._get_player(game, target_id)
+
+        damage = self._card_logic.apply_effect(
+            player, card, card_type, target, self._deck_service
+        )
+
         player.hand_deck.cards.remove(card)
         player.table_deck.cards.append(card)
 
+        # ATTACK: урон не применяется сразу — ждём реакции защитника
+        if damage > 0 and target is not None:
+            game.pending_attack = PendingAttack(
+                attacker_id=player_id,
+                defender_id=target.id,
+                damage=damage,
+            )
+
         self._repo.save(game)
+
+    def defend(
+        self,
+        game_id: UUID,
+        defender_id: UUID,
+        card_id: UUID,
+    ) -> None:
+        """Защитник разыгрывает DEF карту в ответ на pending_attack."""
+        game = self._repo.get(game_id)
+
+        if game.status != GameStatus.IN_PROGRESS:
+            raise ValueError("Game not in progress")
+
+        if game.pending_attack is None:
+            raise ValueError("No pending attack to defend against")
+
+        if game.pending_attack.defender_id != defender_id:
+            raise ValueError("You are not the target of the current attack")
+
+        defender = self._get_player(game, defender_id)
+        card = self._get_card(defender.hand_deck, card_id)
+
+        card_type = None
+        if self._card_type_repo is not None:
+            card_type = self._card_type_repo.get(card.card_type_id)
+
+        if card_type is None or card_type.action != CardAction.DEF:
+            raise ValueError("Only DEF cards can be used to defend")
+
+        if not self._card_logic.can_defend(defender, card, card_type):
+            raise ValueError("This DEF card cannot be played as defense")
+
+        remaining = self._card_logic.apply_defense(
+            defender, card, card_type, game.pending_attack.damage
+        )
+
+        if remaining > 0:
+            defender.health -= remaining
+
+        game.pending_attack = None
+        self._repo.save(game)
+
+    def resolve_pending_attack(self, game: Game) -> None:
+        """Применяет накопленный урон если защитник не ответил (вызывается при end_turn)."""
+        if game.pending_attack is None:
+            return
+        defender = self._get_player(game, game.pending_attack.defender_id)
+        defender.health -= game.pending_attack.damage
+        game.pending_attack = None
 
     def end_turn(self, game_id: UUID, player_id: UUID) -> None:
         game = self._repo.get(game_id)
 
         if not self._state.validate_turn(game, player_id):
             raise ValueError("Another player's turn")
+
+        # Если атакующий завершает ход не дождавшись защиты — урон применяется
+        self.resolve_pending_attack(game)
 
         player = self._get_player(game, player_id)
         player.cur_echo = player.base_echo
@@ -168,9 +252,11 @@ class GameLogic:
             player.discard_deck.cards.clear()
             self._deck_service.shuffle(player.draw_deck)
 
-        player.hand_deck.cards.extend(
-            self._deck_service.draw(player.draw_deck, player.hand_size)
-        )
+        draw_count = min(player.hand_size, len(player.draw_deck.cards))
+        if draw_count > 0:
+            player.hand_deck.cards.extend(
+                self._deck_service.draw(player.draw_deck, draw_count)
+            )
 
         self._state.next_turn(game)
         self._repo.save(game)

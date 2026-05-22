@@ -1,4 +1,5 @@
 from domain.entities import Card
+from infrastructure.db.mappers.card_type_mapper import CardTypeMapper
 from infrastructure.db.mappers.image_mapper import ImageMapper
 from infrastructure.db.models import CardModel
 
@@ -19,6 +20,11 @@ class CardMapper:
             image=(
                 ImageMapper.to_domain(model.image)
                 if model.image is not None
+                else None
+            ),
+            card_type=(
+                CardTypeMapper.to_domain(model.card_type)
+                if model.card_type is not None
                 else None
             ),
         )

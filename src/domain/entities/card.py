@@ -1,6 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from uuid import UUID
 
+from .card_type import CardType
 from .image import Image
 
 
@@ -16,3 +17,4 @@ class Card:
     cost: int = 3  # card cost in echo
     cool_points: int = 0
     image: Image | None = None
+    card_type: CardType | None = None

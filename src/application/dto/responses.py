@@ -12,6 +12,13 @@ class ImageResponse(BaseModel):
     url: str | None = None
 
 
+class CardTypeResponse(BaseModel):
+    id: UUID
+    action: str
+    usage_pattern: str
+    color: str
+
+
 class CardResponse(BaseModel):
     id: UUID
     title: str
@@ -22,6 +29,7 @@ class CardResponse(BaseModel):
     echo: int
     cost: int
     cool_points: int
+    card_type: CardTypeResponse | None = None
 
 
 class PlayerResponse(BaseModel):
@@ -53,6 +61,12 @@ class WinnerResponse(BaseModel):
     cards_count: int
 
 
+class PendingAttackResponse(BaseModel):
+    attacker_id: UUID
+    defender_id: UUID
+    damage: int
+
+
 class GameResponse(BaseModel):
     id: UUID
     status: str
@@ -67,6 +81,8 @@ class GameResponse(BaseModel):
 
     banish_count: int
     deck_count: int
+    
+    pending_attack: PendingAttackResponse | None = None
 
 
 class UserResponse(BaseModel):

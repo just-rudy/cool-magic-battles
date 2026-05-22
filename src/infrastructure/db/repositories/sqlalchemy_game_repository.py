@@ -124,6 +124,15 @@ class SqlAlchemyGameRepository(GameRepository):
                 model.cur_turn = game.cur_turn
                 model.cur_player_id = game.cur_player_id
                 model.winner_id = game.winner_id
+                model.pending_attacker_id = (
+                    game.pending_attack.attacker_id if game.pending_attack else None
+                )
+                model.pending_defender_id = (
+                    game.pending_attack.defender_id if game.pending_attack else None
+                )
+                model.pending_damage = (
+                    game.pending_attack.damage if game.pending_attack else None
+                )
 
             existing_players = {
                 player_model.id: player_model

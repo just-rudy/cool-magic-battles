@@ -15,6 +15,9 @@ from config.config import load_config
 from infrastructure.db.repositories.sqlalchemy_card_repository import (
     SqlAlchemyCardRepository,
 )
+from infrastructure.db.repositories.sqlalchemy_card_type_repository import (
+    SqlAlchemyCardTypeRepository,
+)
 from infrastructure.db.repositories.sqlalchemy_game_repository import (
     SqlAlchemyGameRepository,
 )
@@ -53,6 +56,7 @@ def get_game_service(
         deck_service=DeckService(),
         game_state_manager=GameStateManager(),
         card_repository=SqlAlchemyCardRepository(session),
+        card_type_repository=SqlAlchemyCardTypeRepository(session),
         default_market_size=config.game.default_market_size,
     )
 

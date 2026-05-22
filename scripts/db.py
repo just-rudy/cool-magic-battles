@@ -125,6 +125,7 @@ def cmd_seed(args: argparse.Namespace) -> int:
         current_count = len(existing_titles)
         print(f"Current cards in db: {current_count}")
         target_count = args.cards
+        # target_count = 10
         if current_count >= target_count:
             print(f"  skip  card seed (already have {current_count} cards)")
         else:
@@ -178,9 +179,11 @@ def cmd_fix_card_images(args: argparse.Namespace) -> int:
     SessionLocal = _make_session_factory()
 
     with SessionLocal() as session:
-        cards = session.query(CardModel).filter(
-            CardModel.image_id == DEFAULT_IMAGE_ID
-        ).all()
+        cards = (
+            session.query(CardModel)
+            .filter(CardModel.image_id == DEFAULT_IMAGE_ID)
+            .all()
+        )
 
         if not cards:
             print("No cards with default image found — nothing to fix.")
@@ -194,11 +197,13 @@ def cmd_fix_card_images(args: argparse.Namespace) -> int:
         for card in cards:
             image = _build_image(card.title)
             if image.id not in existing_image_ids:
-                session.add(ImageModel(
-                    id=image.id,
-                    title=image.title,
-                    file=image.file,
-                ))
+                session.add(
+                    ImageModel(
+                        id=image.id,
+                        title=image.title,
+                        file=image.file,
+                    )
+                )
                 existing_image_ids.add(image.id)
             card.image_id = image.id
             fixed += 1
@@ -272,7 +277,7 @@ def main() -> int:
     p_seed.add_argument(
         "--cards",
         type=int,
-        default=100,
+        default=10,
         help="Number of card records to populate in the database",
     )
     sub.add_parser(

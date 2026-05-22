@@ -16,6 +16,7 @@ class JoinGameRequest(BaseModel):
 class PlayCardRequest(BaseModel):
     player_id: UUID
     card_id: UUID
+    target_id: UUID | None = None
 
 
 class BuyCardRequest(BaseModel):
@@ -25,6 +26,11 @@ class BuyCardRequest(BaseModel):
 
 class EndTurnRequest(BaseModel):
     player_id: UUID
+
+
+class DefendRequest(BaseModel):
+    player_id: UUID
+    card_id: UUID
 
 
 class FinishGameRequest(BaseModel):

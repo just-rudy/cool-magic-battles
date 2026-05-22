@@ -8,6 +8,13 @@ from .player import Player
 
 
 @dataclass
+class PendingAttack:
+    attacker_id: UUID
+    defender_id: UUID
+    damage: int  # оставшийся урон после возможной защиты
+
+
+@dataclass
 class Game:
     id: UUID
     host_user_id: UUID
@@ -19,3 +26,4 @@ class Game:
     market_deck: Deck = field(default_factory=lambda: Deck(id=uuid4()))
     game_deck: Deck = field(default_factory=lambda: Deck(id=uuid4()))
     banish_deck: Deck = field(default_factory=lambda: Deck(id=uuid4()))
+    pending_attack: PendingAttack | None = None

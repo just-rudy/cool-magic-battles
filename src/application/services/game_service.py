@@ -3,6 +3,7 @@ from uuid import UUID
 
 from application.dto.requests import CreateGameRequest
 from application.interfaces.card_repository import CardRepository
+from application.interfaces.card_type_repository import CardTypeRepository
 from application.interfaces.game_repository import GameRepository
 from application.interfaces.user_repository import UserRepository
 from application.services.card_logic import CardLogic
@@ -22,6 +23,7 @@ class GameAppService:
         game_state_manager: GameStateManager,
         card_repository: CardRepository,
         default_market_size: int = 5,
+        card_type_repository: CardTypeRepository | None = None,
     ) -> None:
         self._game_repository = game_repository
         self._card_repository = card_repository
@@ -32,6 +34,7 @@ class GameAppService:
             card_logic=card_logic,
             deck_service=deck_service,
             game_state_manager=game_state_manager,
+            card_type_repository=card_type_repository,
         )
 
     def create_new_game(self, request: CreateGameRequest) -> Game:
@@ -90,8 +93,18 @@ class GameAppService:
             )
         return random.sample(all_cards, count)
 
-    def play_card(self, game_id: UUID, player_id: UUID, card_id: UUID) -> Game:
-        self._logic.play_card(game_id, player_id, card_id)
+    def play_card(
+        self,
+        game_id: UUID,
+        player_id: UUID,
+        card_id: UUID,
+        target_id: UUID | None = None,
+    ) -> Game:
+        self._logic.play_card(game_id, player_id, card_id, target_id=target_id)
+        return self._game_repository.get(game_id)
+
+    def defend(self, game_id: UUID, defender_id: UUID, card_id: UUID) -> Game:
+        self._logic.defend(game_id, defender_id, card_id)
         return self._game_repository.get(game_id)
 
     def buy_card(self, game_id: UUID, player_id: UUID, card_id: UUID) -> Game:

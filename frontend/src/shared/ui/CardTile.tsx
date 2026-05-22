@@ -1,4 +1,10 @@
 import type { Card } from '@/entities/game/model/types'
+import {
+  getActionColor,
+  getActionIcon,
+  getActionLabel,
+  getCardEffectDescription,
+} from '@/shared/lib/cardEffects'
 
 interface CardTileProps {
   card: Card
@@ -18,14 +24,17 @@ export function CardTile({
   const interactive = Boolean(onClick) && !disabled
   const imageUrl = card.image?.url
   const imageLabel = card.image?.title || card.title
+  const cardType = card.card_type
+  const effectDescription = getCardEffectDescription(card)
 
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={!interactive}
+      title={effectDescription}
       className={[
-        'relative flex flex-col rounded-xl border text-left transition',
+        'group relative flex flex-col rounded-xl border text-left transition',
         compact ? 'min-w-[140px] p-3' : 'min-w-[170px] p-4',
         highlight
           ? 'border-gold-400 bg-arcane-700/90 shadow-[0_0_24px_rgba(255,213,79,0.35)]'
@@ -35,6 +44,20 @@ export function CardTile({
           : 'cursor-default opacity-70',
       ].join(' ')}
     >
+      {/* Тип карты - бейдж */}
+      {cardType && (
+        <div
+          className={[
+            'absolute right-2 top-2 z-10 flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold backdrop-blur-sm',
+            'bg-arcane-950/80 border border-white/20',
+            getActionColor(cardType.action),
+          ].join(' ')}
+        >
+          <span>{getActionIcon(cardType.action)}</span>
+          <span className="hidden sm:inline">{getActionLabel(cardType.action)}</span>
+        </div>
+      )}
+
       <div
         className={[
           'relative overflow-hidden rounded-lg border border-white/10 bg-arcane-950/80',
@@ -75,6 +98,16 @@ export function CardTile({
         <Stat label="Цена" value={card.cost} />
         {!compact && <Stat label="Крутость" value={card.cool_points} />}
       </div>
+
+      {/* Тултип с описанием эффекта */}
+      {cardType && (
+        <div className="pointer-events-none absolute -top-2 left-1/2 z-20 -translate-x-1/2 -translate-y-full opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="rounded-lg border border-arcane-400/50 bg-arcane-900/95 px-3 py-2 text-xs text-white shadow-xl backdrop-blur-sm">
+            <div className="whitespace-nowrap">{effectDescription}</div>
+            <div className="absolute bottom-0 left-1/2 h-2 w-2 -translate-x-1/2 translate-y-1/2 rotate-45 border-b border-r border-arcane-400/50 bg-arcane-900/95" />
+          </div>
+        </div>
+      )}
     </button>
   )
 }

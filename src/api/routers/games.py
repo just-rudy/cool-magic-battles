@@ -1,12 +1,16 @@
 from typing import Annotated
 from uuid import UUID
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
+logger = logging.getLogger(__name__)
+
 from api.dependencies import get_card_image_service, get_game_service
-from application.dto.requests import (
+from application.dto.requests import (  # noqa: E402
     BuyCardRequest,
     CreateGameRequest,
+    DefendRequest,
     EndTurnRequest,
     FinishGameRequest,
     JoinGameRequest,
@@ -14,8 +18,10 @@ from application.dto.requests import (
 )
 from application.dto.responses import (
     CardResponse,
+    CardTypeResponse,
     GameResponse,
     ImageResponse,
+    PendingAttackResponse,
     PlayerResponse,
     WinnerResponse,
 )
@@ -55,6 +61,16 @@ def build_card_response(
         echo=card.echo,
         cost=card.cost,
         cool_points=card.cool_points,
+        card_type=(
+            CardTypeResponse(
+                id=card.card_type.id,
+                action=card.card_type.action.value,
+                usage_pattern=card.card_type.usage_pattern.value,
+                color=card.card_type.color,
+            )
+            if card.card_type is not None
+            else None
+        ),
     )
 
 
@@ -82,8 +98,7 @@ def build_player_response(
             build_card_response(card, image_service) for card in player.hand_deck.cards
         ],
         table=[
-            build_card_response(card, image_service)
-            for card in player.table_deck.cards
+            build_card_response(card, image_service) for card in player.table_deck.cards
         ],
         discard=[
             build_card_response(card, image_service)
@@ -138,6 +153,15 @@ def build_game_response(
         ],
         banish_count=len(game.banish_deck.cards),
         deck_count=len(game.game_deck.cards),
+        pending_attack=(
+            PendingAttackResponse(
+                attacker_id=game.pending_attack.attacker_id,
+                defender_id=game.pending_attack.defender_id,
+                damage=game.pending_attack.damage,
+            )
+            if game.pending_attack is not None
+            else None
+        ),
     )
 
 
@@ -264,8 +288,33 @@ def play_card(
             game_id=game_id,
             player_id=request.player_id,
             card_id=request.card_id,
+            target_id=request.target_id,
         )
 
+        return build_game_response(game, image_service)
+    except EntityNotFoundError as ex:
+        raise HTTPException(status_code=404, detail=str(ex)) from ex
+    except ValueError as ex:
+        logger.warning("play_card error: %s", ex)
+        raise HTTPException(status_code=400, detail=str(ex)) from ex
+
+
+@router.post(
+    "/{game_id}/defend",
+    response_model=GameResponse,
+)
+def defend(
+    game_id: UUID,
+    request: DefendRequest,
+    service: Annotated[GameAppService, Depends(get_game_service)],
+    image_service: Annotated[CardImageService, Depends(get_card_image_service)],
+) -> GameResponse:
+    try:
+        game = service.defend(
+            game_id=game_id,
+            defender_id=request.player_id,
+            card_id=request.card_id,
+        )
         return build_game_response(game, image_service)
     except EntityNotFoundError as ex:
         raise HTTPException(status_code=404, detail=str(ex)) from ex
@@ -317,6 +366,7 @@ def end_turn(
     except EntityNotFoundError as ex:
         raise HTTPException(status_code=404, detail=str(ex)) from ex
     except ValueError as ex:
+        logger.warning("end_turn error: %s", ex)
         raise HTTPException(status_code=400, detail=str(ex)) from ex
 
 

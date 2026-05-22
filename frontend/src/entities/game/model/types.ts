@@ -5,6 +5,13 @@ export interface CardImage {
   url: string | null
 }
 
+export interface CardType {
+  id: string
+  action: string
+  usage_pattern: string
+  color: string
+}
+
 export interface Card {
   id: string
   title: string
@@ -15,6 +22,7 @@ export interface Card {
   echo: number
   cost: number
   cool_points: number
+  card_type: CardType | null
 }
 
 export interface Player {
@@ -41,6 +49,12 @@ export interface Winner {
   cards_count: number
 }
 
+export interface PendingAttack {
+  attacker_id: string
+  defender_id: string
+  damage: number
+}
+
 export interface Game {
   id: string
   status: string
@@ -51,6 +65,7 @@ export interface Game {
   market: Card[]
   banish_count: number
   deck_count: number
+  pending_attack: PendingAttack | null
 }
 
 export interface User {

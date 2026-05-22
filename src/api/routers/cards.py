@@ -29,9 +29,7 @@ def list_cards(
     repository: Annotated[CardRepository, Depends(get_card_repository)],
     image_service: Annotated[CardImageService, Depends(get_card_image_service)],
 ) -> list[CardResponse]:
-    return [
-        build_card_response(card, image_service) for card in repository.list_all()
-    ]
+    return [build_card_response(card, image_service) for card in repository.list_all()]
 
 
 @router.get("/{card_id}", response_model=CardResponse)

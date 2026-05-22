@@ -28,6 +28,15 @@ class GameModel(Base):
         ForeignKey("players.id", use_alter=True, name="fk_games_winner_id_players"),
         nullable=True,
     )
+    # pending attack fields (nullable — атаки может не быть)
+    pending_attacker_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), nullable=True
+    )
+    pending_defender_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), nullable=True
+    )
+    pending_damage: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     players: Mapped[list["PlayerModel"]] = relationship(
         "PlayerModel",
         back_populates="game",
@@ -39,6 +48,3 @@ class GameModel(Base):
         back_populates="game",
         cascade="all, delete-orphan",
     )
-    # memos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    # time_start: Mapped[str] = mapped_column(String(50), nullable=False)
-    # time_end: Mapped[str | None] = mapped_column(String(50), nullable=True)

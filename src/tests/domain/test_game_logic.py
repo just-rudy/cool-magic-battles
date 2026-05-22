@@ -24,6 +24,7 @@ def game_logic() -> tuple[GameLogic, Mock, Mock, Mock, Mock, Mock]:
         card_logic=card_logic,
         deck_service=deck_service,
         game_state_manager=state_manager,
+        card_type_repository=None,
     )
 
     return (
@@ -514,12 +515,13 @@ def test_play_card_moves_card_from_hand_to_table_cur_expected_domain_behavior(
     game_repository.get.return_value = game
     state_manager.validate_turn.return_value = True
     card_logic.can_be_played.return_value = True
+    card_logic.apply_effect.return_value = 0  # Возвращаем 0 (нет урона)
 
     logic.play_card(game.id, player.id, card.id)
 
     assert card not in player.hand_deck.cards
     assert card in player.table_deck.cards
-    card_logic.apply_effect.assert_called_once_with(player, card)
+    card_logic.apply_effect.assert_called_once_with(player, card, None, None, logic._deck_service)
     game_repository.save.assert_called_once_with(game)
 
 
@@ -613,3 +615,222 @@ def test_end_turn_shuffles_discard_into_draw_deck_when_cards_are_insufficient(
     deck_service.draw.assert_called_once_with(player.draw_deck, player.hand_size)
     state_manager.next_turn.assert_called_once_with(game)
     game_repository.save.assert_called_once_with(game)
+
+
+def test_play_card_attack_creates_pending_attack(
+    game_logic: tuple[GameLogic, Mock, Mock, Mock, Mock, Mock],
+    make_game: Callable[..., Game],
+    make_player: Callable[..., Player],
+    make_card: Callable[..., Card],
+) -> None:
+    from domain.entities.card_type import CardType
+    from domain.enums import CardAction, UsePattern
+
+    logic, game_repository, _, card_logic, _, state_manager = game_logic
+    attacker = make_player(nickname="attacker")
+    defender = make_player(nickname="defender")
+    card = make_card(power=5)
+    attacker.hand_deck.cards.append(card)
+
+    card_type = CardType(
+        id=uuid4(), action=CardAction.ATTACK, usage_pattern=UsePattern.REG
+    )
+
+    game = make_game(
+        host_user_id=uuid4(),
+        players=[attacker, defender],
+        status=GameStatus.IN_PROGRESS,
+        cur_player_id=attacker.id,
+    )
+    game_repository.get.return_value = game
+    state_manager.validate_turn.return_value = True
+    card_logic.can_be_played.return_value = True
+    card_logic.apply_effect.return_value = 5  # Возвращаем урон
+    
+    # Мокаем card_type_repository
+    logic._card_type_repo = Mock()
+    logic._card_type_repo.get.return_value = card_type
+
+    logic.play_card(game.id, attacker.id, card.id, defender.id)
+
+    assert game.pending_attack is not None
+    assert game.pending_attack.attacker_id == attacker.id
+    assert game.pending_attack.defender_id == defender.id
+    assert game.pending_attack.damage == 5
+    assert card in attacker.table_deck.cards
+    game_repository.save.assert_called_once_with(game)
+
+
+def test_end_turn_resolves_pending_attack_when_not_defended(
+    game_logic: tuple[GameLogic, Mock, Mock, Mock, Mock, Mock],
+    make_game: Callable[..., Game],
+    make_player: Callable[..., Player],
+    make_card: Callable[..., Card],
+) -> None:
+    from domain.entities import PendingAttack
+
+    logic, game_repository, _, _, deck_service, state_manager = game_logic
+
+    attacker = make_player(nickname="attacker", cur_echo=3, hand_size=2)
+    defender = make_player(nickname="defender", health=20)
+    attacker.hand_deck.cards = []
+    attacker.table_deck.cards = []
+    attacker.draw_deck.cards = [make_card(title="d1"), make_card(title="d2")]
+
+    game = make_game(
+        host_user_id=uuid4(),
+        players=[attacker, defender],
+        cur_player_id=attacker.id,
+        pending_attack=PendingAttack(
+            attacker_id=attacker.id, defender_id=defender.id, damage=7
+        ),
+    )
+    game_repository.get.return_value = game
+    state_manager.validate_turn.return_value = True
+    deck_service.draw.return_value = [make_card(title="d1"), make_card(title="d2")]
+
+    logic.end_turn(game.id, attacker.id)
+
+    assert defender.health == 13  # 20 - 7
+    assert game.pending_attack is None
+    game_repository.save.assert_called_once_with(game)
+
+
+def test_defend_applies_defense_and_reduces_pending_damage(
+    game_logic: tuple[GameLogic, Mock, Mock, Mock, Mock, Mock],
+    make_game: Callable[..., Game],
+    make_player: Callable[..., Player],
+    make_card: Callable[..., Card],
+) -> None:
+    from domain.entities import PendingAttack
+    from domain.entities.card_type import CardType
+    from domain.enums import CardAction, UsePattern
+
+    logic, game_repository, _, card_logic, _, _ = game_logic
+
+    attacker = make_player(nickname="attacker")
+    defender = make_player(nickname="defender", health=20)
+    def_card = make_card(power=3, echo=1)
+    defender.hand_deck.cards.append(def_card)
+
+    card_type = CardType(
+        id=uuid4(), action=CardAction.DEF, usage_pattern=UsePattern.DISCARD
+    )
+
+    game = make_game(
+        host_user_id=uuid4(),
+        players=[attacker, defender],
+        status=GameStatus.IN_PROGRESS,
+        pending_attack=PendingAttack(
+            attacker_id=attacker.id, defender_id=defender.id, damage=5
+        ),
+    )
+    game_repository.get.return_value = game
+    
+    # Мокаем card_type_repository
+    logic._card_type_repo = Mock()
+    logic._card_type_repo.get.return_value = card_type
+    
+    card_logic.can_defend.return_value = True
+    card_logic.apply_defense.return_value = 2  # 5 - 3 = 2 оставшегося урона
+
+    logic.defend(game.id, defender.id, def_card.id)
+
+    assert game.pending_attack is None
+    assert defender.health == 18  # 20 - 2
+    card_logic.can_defend.assert_called_once_with(defender, def_card, card_type)
+    card_logic.apply_defense.assert_called_once_with(defender, def_card, card_type, 5)
+    game_repository.save.assert_called_once_with(game)
+
+
+def test_defend_raises_error_when_no_pending_attack(
+    game_logic: tuple[GameLogic, Mock, Mock, Mock, Mock, Mock],
+    make_game: Callable[..., Game],
+    make_player: Callable[..., Player],
+    make_card: Callable[..., Card],
+) -> None:
+    logic, game_repository, *_ = game_logic
+
+    defender = make_player(nickname="defender")
+    def_card = make_card()
+
+    game = make_game(
+        host_user_id=uuid4(),
+        players=[defender],
+        status=GameStatus.IN_PROGRESS,
+        pending_attack=None,
+    )
+    game_repository.get.return_value = game
+
+    with pytest.raises(ValueError, match="No pending attack to defend against"):
+        logic.defend(game.id, defender.id, def_card.id)
+
+
+def test_defend_raises_error_when_not_the_defender(
+    game_logic: tuple[GameLogic, Mock, Mock, Mock, Mock, Mock],
+    make_game: Callable[..., Game],
+    make_player: Callable[..., Player],
+    make_card: Callable[..., Card],
+) -> None:
+    from domain.entities import PendingAttack
+
+    logic, game_repository, *_ = game_logic
+
+    attacker = make_player(nickname="attacker")
+    defender = make_player(nickname="defender")
+    other_player = make_player(nickname="other")
+    def_card = make_card()
+
+    game = make_game(
+        host_user_id=uuid4(),
+        players=[attacker, defender, other_player],
+        status=GameStatus.IN_PROGRESS,
+        pending_attack=PendingAttack(
+            attacker_id=attacker.id, defender_id=defender.id, damage=5
+        ),
+    )
+    game_repository.get.return_value = game
+
+    with pytest.raises(ValueError, match="You are not the target of the current attack"):
+        logic.defend(game.id, other_player.id, def_card.id)
+
+
+def test_defend_raises_error_when_card_cannot_defend(
+    game_logic: tuple[GameLogic, Mock, Mock, Mock, Mock, Mock],
+    make_game: Callable[..., Game],
+    make_player: Callable[..., Player],
+    make_card: Callable[..., Card],
+) -> None:
+    from domain.entities import PendingAttack
+    from domain.entities.card_type import CardType
+    from domain.enums import CardAction, UsePattern
+
+    logic, game_repository, _, card_logic, _, _ = game_logic
+
+    attacker = make_player(nickname="attacker")
+    defender = make_player(nickname="defender")
+    def_card = make_card()
+    defender.hand_deck.cards.append(def_card)
+    
+    card_type = CardType(
+        id=uuid4(), action=CardAction.DEF, usage_pattern=UsePattern.DISCARD
+    )
+
+    game = make_game(
+        host_user_id=uuid4(),
+        players=[attacker, defender],
+        status=GameStatus.IN_PROGRESS,
+        pending_attack=PendingAttack(
+            attacker_id=attacker.id, defender_id=defender.id, damage=5
+        ),
+    )
+    game_repository.get.return_value = game
+    
+    # Мокаем card_type_repository
+    logic._card_type_repo = Mock()
+    logic._card_type_repo.get.return_value = card_type
+    
+    card_logic.can_defend.return_value = False
+
+    with pytest.raises(ValueError, match="This DEF card cannot be played as defense"):
+        logic.defend(game.id, defender.id, def_card.id)

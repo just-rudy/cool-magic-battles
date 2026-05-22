@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from infrastructure.db.base import Base
 
 if TYPE_CHECKING:
+    from infrastructure.db.models.card_type_model import CardTypeModel
     from infrastructure.db.models.deck_card_model import DeckCardModel
     from infrastructure.db.models.image_model import ImageModel
 
@@ -17,7 +18,11 @@ class CardModel(Base):
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
     creature: Mapped[str] = mapped_column(String(100), nullable=False)
-    card_type_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    card_type_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("card_types.id"),
+        nullable=False,
+    )
     image_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("images.id"),
@@ -30,6 +35,10 @@ class CardModel(Base):
     image: Mapped["ImageModel"] = relationship(
         "ImageModel",
         back_populates="cards",
+    )
+    card_type: Mapped["CardTypeModel"] = relationship(
+        "CardTypeModel",
+        lazy="joined",
     )
     deck_cards: Mapped[list["DeckCardModel"]] = relationship(
         "DeckCardModel",
