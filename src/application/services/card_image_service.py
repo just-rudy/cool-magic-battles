@@ -6,7 +6,7 @@ from uuid import UUID
 
 from application.interfaces.card_repository import CardRepository
 from application.interfaces.image_storage import ImageStorage
-from domain.entities import Image
+from domain.entities import Card, Image
 
 # Паттерн пути для реально загруженных файлов: cards/<uuid>/<filename>
 _UPLOADED_PATH_RE = re.compile(
@@ -34,7 +34,7 @@ class CardImageService:
         filename: str,
         content_base64: str,
         content_type: str,
-    ):
+    ) -> Card:
         if not filename.strip():
             raise ValueError("filename must not be empty")
 

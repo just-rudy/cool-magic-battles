@@ -6,6 +6,7 @@ from application.services.card_factory import (
     generate_cards,
     list_card_types,
 )
+from domain.card_colors import ACTION_COLORS
 from domain.enums import CardAction, UsePattern
 
 
@@ -23,21 +24,27 @@ def test_list_card_types_respects_generation_rules() -> None:
 
         # ATTACK и DRAW — только reg
         if card_type.action in {CardAction.ATTACK, CardAction.DRAW}:
-            assert card_type.usage_pattern == UsePattern.REG, (
-                f"{card_type.action} card has wrong usage_pattern: {card_type.usage_pattern}"
+            msg = (
+                f"{card_type.action} card has wrong "
+                f"usage_pattern: {card_type.usage_pattern}"
             )
+            assert card_type.usage_pattern == UsePattern.REG, msg
 
         # HAND_BUFF и ECHO_BUFF — только banish
         if card_type.action in {CardAction.HAND_BUFF, CardAction.ECHO_BUFF}:
-            assert card_type.usage_pattern == UsePattern.BANISH, (
-                f"{card_type.action} card has wrong usage_pattern: {card_type.usage_pattern}"
+            msg = (
+                f"{card_type.action} card has wrong "
+                f"usage_pattern: {card_type.usage_pattern}"
             )
+            assert card_type.usage_pattern == UsePattern.BANISH, msg
 
         # HEAL — не on_top
         if card_type.action == CardAction.HEAL:
             assert card_type.usage_pattern != UsePattern.ON_TOP, (
                 f"HEAL card has wrong usage_pattern: {card_type.usage_pattern}"
             )
+
+        assert card_type.color == ACTION_COLORS[card_type.action]
 
 
 def test_generate_cards_assigns_known_card_type_ids() -> None:

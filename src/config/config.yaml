@@ -3,6 +3,16 @@ database:
   # Локально без Docker (peer auth, пользователь ОС = владелец БД):
   url: "postgresql+psycopg:///cool_magic_battles"
 
+storage:
+  # Бэкенд хранилища: "postgres" или "mongo"
+  # Переопределяется через STORAGE_BACKEND в .env
+  backend: "postgres"
+
+mongo:
+  # Переопределяется через MONGO_URL в .env
+  url: "mongodb://localhost:27017"
+  database: "cool_magic_battles"
+
 game:
   default_hand_size: 5
   default_market_size: 5

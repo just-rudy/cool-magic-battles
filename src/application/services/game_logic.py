@@ -7,8 +7,9 @@ from application.interfaces.user_repository import UserRepository
 from application.services.card_logic import CardLogic
 from application.services.deck_service import DeckService
 from application.services.game_state_manager import GameStateManager
-from domain.entities import Card, Deck, Game, PendingAttack, Player
-from domain.enums import CardAction, GameStatus, UsePattern
+from domain.entities import Card, CardType, Deck, Game, PendingAttack, Player
+from domain.enums import CardAction, GameStatus, UserRole
+from domain.player_health import DEFAULT_PLAYER_HEALTH, health_after_death
 
 
 class GameLogic:
@@ -48,13 +49,42 @@ class GameLogic:
             *player.discard_deck.cards,
         ]
 
+    def _apply_damage(self, player: Player, damage: int, game: Game) -> None:
+        """Наносит урон игроку. При смерти выдаёт памятку из игрового пула.
+        
+        Возвращает True если игра должна завершиться (пул памяток исчерпан).
+        """
+        if damage <= 0:
+            return
+        player.health -= damage
+        if player.health <= 0:
+            player.health = health_after_death()
+            if game.memos > 0:
+                game.memos -= 1
+                player.memos += 1
+
+    def _resolve_heal_target(
+        self,
+        player: Player,
+        card_type: CardType | None,
+        target: Player | None,
+    ) -> Player | None:
+        if (
+            card_type is not None
+            and card_type.action == CardAction.HEAL
+            and target is None
+        ):
+            return player
+        return target
+
     def _determine_winner(self, game: Game) -> Player:
         if not game.players:
             raise ValueError("No players in the game")
 
         def ranking(player: Player) -> tuple[int, int, int, str, str]:
             cards = self._player_cards(player)
-            cool_points = sum(card.cool_points for card in cards)
+            # Каждая памятка даёт -3 к очкам крутости
+            cool_points = sum(card.cool_points for card in cards) - 3 * player.memos
             cards_count = len(cards)
             return (
                 cool_points,
@@ -66,8 +96,8 @@ class GameLogic:
 
         return max(game.players, key=ranking)
 
-    def create_game(self, host_user_id: UUID) -> Game:
-        game = Game(id=uuid4(), host_user_id=host_user_id)
+    def create_game(self, host_user_id: UUID, name: str = "") -> Game:
+        game = Game(id=uuid4(), host_user_id=host_user_id, name=name)
         self._repo.save(game)
         return game
 
@@ -83,6 +113,9 @@ class GameLogic:
 
         if not game.players:
             raise ValueError("No players in the game")
+
+        # Инициализируем пул памяток: количество игроков + 3
+        game.memos = len(game.players) + 3
 
         game.cur_turn = 0
         game.cur_player_id = game.players[0].id
@@ -103,7 +136,15 @@ class GameLogic:
 
         user = self._us_repo.get(user_id)
 
-        player = Player(id=uuid4(), user_id=user_id, nickname=user.username)
+        player = Player(
+            id=uuid4(),
+            user_id=user_id,
+            nickname=user.username,
+            health=DEFAULT_PLAYER_HEALTH,
+        )
+        if user.role == UserRole.AUTHENTICATED:
+            user.role = UserRole.PLAYER
+            self._us_repo.save(user)
 
         game.players.append(player)
         self._repo.save(game)
@@ -165,6 +206,8 @@ class GameLogic:
         if target_id is not None:
             target = self._get_player(game, target_id)
 
+        target = self._resolve_heal_target(player, card_type, target)
+
         damage = self._card_logic.apply_effect(
             player, card, card_type, target, self._deck_service
         )
@@ -218,18 +261,36 @@ class GameLogic:
         )
 
         if remaining > 0:
-            defender.health -= remaining
+            self._apply_damage(defender, remaining, game)
 
         game.pending_attack = None
         self._repo.save(game)
 
     def resolve_pending_attack(self, game: Game) -> None:
-        """Применяет накопленный урон если защитник не ответил (вызывается при end_turn)."""
+        """Применяет накопленный урон если защитник не ответил. Вызывается при end_turn."""
         if game.pending_attack is None:
             return
         defender = self._get_player(game, game.pending_attack.defender_id)
-        defender.health -= game.pending_attack.damage
+        self._apply_damage(defender, game.pending_attack.damage, game)
         game.pending_attack = None
+
+    def skip_defend(self, game_id: UUID, defender_id: UUID) -> None:
+        """Защитник сознательно отказывается от защиты — урон применяется сразу."""
+        game = self._repo.get(game_id)
+
+        if game.status != GameStatus.IN_PROGRESS:
+            raise ValueError("Game not in progress")
+
+        if game.pending_attack is None:
+            raise ValueError("No pending attack to skip")
+
+        if game.pending_attack.defender_id != defender_id:
+            raise ValueError("You are not the target of the current attack")
+
+        defender = self._get_player(game, defender_id)
+        self._apply_damage(defender, game.pending_attack.damage, game)
+        game.pending_attack = None
+        self._repo.save(game)
 
     def end_turn(self, game_id: UUID, player_id: UUID) -> None:
         game = self._repo.get(game_id)
@@ -239,6 +300,15 @@ class GameLogic:
 
         # Если атакующий завершает ход не дождавшись защиты — урон применяется
         self.resolve_pending_attack(game)
+
+        # Проверяем: не исчерпались ли памятки после урона
+        if game.memos == 0 and game.status == GameStatus.IN_PROGRESS:
+            winner = self._determine_winner(game)
+            game.status = GameStatus.FINISHED
+            game.cur_player_id = None
+            game.winner_id = winner.id
+            self._repo.save(game)
+            return
 
         player = self._get_player(game, player_id)
         player.cur_echo = player.base_echo

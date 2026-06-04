@@ -1,4 +1,5 @@
 from domain.entities import User
+from domain.enums import UserRole
 from infrastructure.db.models import UserModel
 
 
@@ -8,7 +9,8 @@ class UserMapper:
         return User(
             id=model.id,
             username=model.username,
-            # email=model.email,
+            role=UserRole(model.role),
+            password_hash=model.password_hash,
         )
 
     @staticmethod
@@ -16,5 +18,6 @@ class UserMapper:
         return UserModel(
             id=entity.id,
             username=entity.username,
-            # email=entity.email,
+            role=entity.role.value,
+            password_hash=entity.password_hash,
         )

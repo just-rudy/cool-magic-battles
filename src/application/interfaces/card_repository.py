@@ -14,6 +14,10 @@ class CardRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def delete(self, card_id: UUID) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
     def list_all(self) -> list[Card]:
         raise NotImplementedError
 

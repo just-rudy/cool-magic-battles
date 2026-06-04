@@ -2,6 +2,8 @@
 set -euo pipefail
 
 API_BASE_URL="${API_BASE_URL:-http://localhost:8000/api/v1}"
+# Fixed id from `make db-seed` (mega_user, role master)
+AUTH_USER_ID="${AUTH_USER_ID:-c0ffee00-0000-4000-8000-0000000000ee}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 IMAGES_DIR="${1:-${DIR:-}}"
 
@@ -12,6 +14,7 @@ Usage:
 
 Env:
   API_BASE_URL   Base API url, default: http://localhost:8000/api/v1
+  AUTH_USER_ID   X-User-Id header (master), default: mega_user from db-seed
   PYTHON_BIN     Python executable for helper snippets, default: python3
 
 How matching works:
@@ -80,7 +83,16 @@ while IFS= read -r -d '' file; do
         continue
     fi
 
-    match="$("${PYTHON_BIN}" - "${cards_json}" "${stem}" <<'PY'
+    if [[ "${DEBUG:-0}" == "1" ]]; then
+        target_norm="$(${PYTHON_BIN} - "${stem}" <<'PY'
+import re,sys
+print(re.sub(r"[^0-9a-zа-яё]+","",sys.argv[1].lower()))
+PY
+)"
+        echo "debug: stem='${stem}' normalized='${target_norm}'"
+    fi
+
+    match="$(${PYTHON_BIN} - "${cards_json}" "${stem}" <<'PY'
 import json
 import re
 import sys
@@ -88,10 +100,8 @@ import sys
 cards_path = sys.argv[1]
 raw_name = sys.argv[2]
 
-
 def normalize(value: str) -> str:
     return re.sub(r"[^0-9a-zа-яё]+", "", value.lower())
-
 
 with open(cards_path, "r", encoding="utf-8") as fh:
     cards = json.load(fh)
@@ -103,7 +113,7 @@ for card in cards:
         print(f'{card["id"]}|{title}')
         break
 PY
-)"
+ )"
 
     if [[ -z "${match}" ]]; then
         echo "skip  ${filename}  card not found by title"
@@ -139,6 +149,7 @@ PY
         -X POST \
         "${API_BASE_URL}/cards/${card_id}/image" \
         -H "Content-Type: application/json" \
+        -H "X-User-Id: ${AUTH_USER_ID}" \
         --data @"${payload_json}" \
         >/dev/null
     then

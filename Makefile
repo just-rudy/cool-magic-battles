@@ -1,4 +1,4 @@
-.PHONY: help db-up db-down db-wait db-migrate db-seed db-reset db-reseed db-truncate db-truncate-all minio-up minio-down minio-logs infra-up infra-down upload-default-image upload-card-images upload-card-images-offline install run-api run-frontend run-all
+.PHONY: help db-up db-down db-wait db-migrate db-seed db-reset db-reseed db-truncate db-truncate-all mongo-up mongo-down mongo-seed redis-up redis-down minio-up minio-down minio-logs infra-up infra-down upload-default-image upload-card-images upload-card-images-offline install run-api run-frontend run-all test-storage-switch demo-mongo demo-teacher run-with-mongo
 
 # docker compose (v2 plugin) или docker-compose (v1)
 ifeq ($(shell docker compose version >/dev/null 2>&1 && echo yes),yes)
@@ -20,17 +20,26 @@ help:
 	@echo "  make db-seed       - insert demo users"
 	@echo "  make db-reset      - downgrade + migrate + seed"
 	@echo "  make db-reseed     - truncate all tables + seed (faster than reset)"
+	@echo "  make mongo-up      - start MongoDB on :27017"
+	@echo "  make mongo-down    - stop MongoDB"
+	@echo "  make mongo-seed    - seed users and cards into MongoDB"
 	@echo "  make db-truncate   - truncate table: make db-truncate TABLE=cards [CASCADE=1]"
 	@echo "  make db-truncate-all - truncate all tables in current DB"
+	@echo "  make redis-up      - start Redis on :6379 (кэш каталога карт)"
+	@echo "  make redis-down    - stop Redis"
 	@echo "  make minio-up      - start MinIO on :9000 and console on :9001"
 	@echo "  make minio-down    - stop MinIO"
 	@echo "  make minio-logs    - tail MinIO logs"
-	@echo "  make infra-up      - start PostgreSQL + MinIO"
+	@echo "  make infra-up      - start PostgreSQL + Redis + MinIO + Mongo"
 	@echo "  make infra-down    - stop all Docker infrastructure"
 	@echo "  make upload-card-images DIR=assets/cards - upload images to cards by file name"
 	@echo "  make run-api       - FastAPI on :8000"
 	@echo "  make run-frontend  - Vite dev server on :5173"
 	@echo "  make run-all       - run both API and frontend in parallel"
+	@echo "  make test-storage-switch - test PostgreSQL and MongoDB switching"
+	@echo "  make demo-mongo    - demo MongoDB functionality"
+	@echo "  make demo-teacher  - full demo for teacher"
+	@echo "  make run-with-mongo - run API with MongoDB only (no PostgreSQL)"
 
 install:
 	pip install -r requirements.txt
@@ -38,11 +47,26 @@ install:
 db-up:
 	$(call DOCKER_RUN,up -d db)
 
+redis-up:
+	$(call DOCKER_RUN,up -d redis)
+
+redis-down:
+	$(call DOCKER_RUN,stop redis)
+
 minio-up:
 	$(call DOCKER_RUN,up -d minio)
 
+mongo-up:
+	$(call DOCKER_RUN,up -d mongo)
+
+mongo-down:
+	$(call DOCKER_RUN,stop mongo)
+
+mongo-seed:
+	STORAGE_BACKEND=mongo PYTHONPATH=src .venv/bin/python scripts/mongo_seed.py
+
 infra-up:
-	$(call DOCKER_RUN,up -d db minio)
+	$(call DOCKER_RUN,up -d db redis minio mongo)
 
 db-down:
 	$(call DOCKER_RUN,down)
@@ -61,8 +85,9 @@ upload-default-image:
 	PYTHONPATH=src python3 scripts/upload_default_image.py
 
 upload-card-images:
-	@test -n "$(DIR)" || (echo "Usage: make upload-card-images DIR=<folder> [API_BASE_URL=http://localhost:8000/api/v1]" && exit 1)
+	@test -n "$(DIR)" || (echo "Usage: make upload-card-images DIR=<folder> [API_BASE_URL=http://localhost:8000/api/v1] [AUTH_USER_ID=...]" && exit 1)
 	API_BASE_URL=$(or $(API_BASE_URL),http://localhost:8000/api/v1) \
+	AUTH_USER_ID=$(or $(AUTH_USER_ID),c0ffee00-0000-4000-8000-0000000000ee) \
 		bash scripts/upload_card_images.sh "$(DIR)"
 
 db-wait:
@@ -89,6 +114,7 @@ db-reset:
 	$(MAKE) db-seed
 
 db-reseed:
+	$(MAKE) db-migrate
 	PYTHONPATH=src .venv/bin/python scripts/db.py truncate-all
 	PYTHONPATH=src .venv/bin/python scripts/db.py seed
 
@@ -120,3 +146,7 @@ run-all:
 	@trap 'kill 0' EXIT; \
 		PYTHONPATH=src uvicorn api.app:app --reload --host 0.0.0.0 --port 8000 & \
 		cd frontend && npm run dev
+
+run-with-mongo:
+	@echo "Running with MongoDB only (no PostgreSQL)..."
+	bash run_with_mongo.sh

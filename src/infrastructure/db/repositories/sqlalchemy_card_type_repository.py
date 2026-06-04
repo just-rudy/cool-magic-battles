@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from application.interfaces.card_type_repository import CardTypeRepository
+from domain.card_colors import color_for_action
 from domain.entities import CardType
 from domain.enums import CardAction, UsePattern
 from infrastructure.db.exceptions import (
@@ -35,19 +36,19 @@ class SqlAlchemyCardTypeRepository(CardTypeRepository):
             raise EntityValidationError(
                 f"card type usage pattern must be one of {allowed_patterns}"
             )
-        if not card_type.color.strip():
-            raise EntityValidationError("card type color must not be empty")
         try:
             model = self._session.get(CardTypeModel, card_type.id)
+            resolved_color = color_for_action(card_type.action)
             if model is None:
+                card_type.color = resolved_color
                 model = CardTypeMapper.to_model(card_type)
                 self._session.add(model)
             else:
                 model.action = card_type.action.value
                 model.usage_pattern = card_type.usage_pattern.value
                 model.if_permanent = card_type.if_permanent
-                model.color = card_type.color
-                self._session.commit()
+                model.color = resolved_color
+            self._session.commit()
         except IntegrityError as exc:
             self._session.rollback()
             raise PersistenceError(

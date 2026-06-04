@@ -1,0 +1,29 @@
+\input{latex-parts/00-preambula}
+
+\begin{document}
+
+\includepdf[page=1, pagecommand={\thispagestyle{plain}}]{pregen}
+% \includepdf[page=2, pagecommand={\thispagestyle{plain}}]{pregen}
+% \includepdf[page=3, pagecommand={\thispagestyle{plain}}]{pregen}
+\setcounter{page}{4}
+\include{latex-parts/02-referat}
+
+\setlength{\cftsecindent}{0cm}
+\def\contentsname{\begin{center} \vspace{-3.4cm}
+        Содержание\end{center}}
+\tableofcontents
+
+\include{latex-parts/03-introduction}
+\include{latex-parts/04-analytic_part}
+\include{latex-parts/05-design_part}
+\include{latex-parts/06-tech_part}
+\include{latex-parts/07-experimental_part}
+\include{latex-parts/10-role_based_access}
+\include{latex-parts/08-conclusion}
+
+\def\bibname{\begin{center}\vspace{-1.3cm} \Large СПИСОК ИСПОЛЬЗОВАННЫХ
+        ИСТОЧНИКОВ\end{center}}
+\include{latex-parts/links}
+\include{latex-parts/09-appendixA}
+\include{latex-parts/10-appendixB}
+\end{document}

@@ -18,11 +18,13 @@ class PendingAttack:
 class Game:
     id: UUID
     host_user_id: UUID
+    name: str = ""
     status: GameStatus = GameStatus.CREATED
     players: list[Player] = field(default_factory=list)
     cur_turn: int = 0
     cur_player_id: UUID | None = None
     winner_id: UUID | None = None
+    memos: int = 0  # пул памяток о бренности бытия в игре
     market_deck: Deck = field(default_factory=lambda: Deck(id=uuid4()))
     game_deck: Deck = field(default_factory=lambda: Deck(id=uuid4()))
     banish_deck: Deck = field(default_factory=lambda: Deck(id=uuid4()))

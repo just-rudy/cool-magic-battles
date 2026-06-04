@@ -1,5 +1,4 @@
 from collections.abc import Callable
-from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -124,19 +123,34 @@ def test_apply_effect_heal_increases_target_health(
     assert result == 0
 
 
-def test_apply_effect_heal_caps_at_20(
+def test_apply_effect_heal_caps_at_25(
     make_player: Callable[..., Player], make_card: Callable[..., Card]
 ) -> None:
     logic = CardLogic()
     player = make_player()
-    target = make_player(health=18)
+    target = make_player(health=23)
     card = make_card(power=5, echo=0)
     card_type = _make_card_type(CardAction.HEAL)
 
     result = logic.apply_effect(player, card, card_type=card_type, target=target)
 
-    assert target.health == 20
+    assert target.health == 25
     assert result == 0
+
+
+def test_apply_effect_heal_at_max_health_still_grants_echo(
+    make_player: Callable[..., Player], make_card: Callable[..., Card]
+) -> None:
+    logic = CardLogic()
+    player = make_player(cur_echo=0)
+    target = make_player(health=25)
+    card = make_card(power=3, echo=2)
+    card_type = _make_card_type(CardAction.HEAL)
+
+    logic.apply_effect(player, card, card_type=card_type, target=target)
+
+    assert target.health == 25
+    assert player.cur_echo == 2
 
 
 def test_apply_effect_heal_raises_when_no_target(
@@ -180,7 +194,9 @@ def test_apply_effect_draw_draws_cards_from_draw_deck(
     card_type = _make_card_type(CardAction.DRAW)
     deck_service = DeckService()
 
-    result = logic.apply_effect(player, card, card_type=card_type, deck_service=deck_service)
+    result = logic.apply_effect(
+        player, card, card_type=card_type, deck_service=deck_service
+    )
 
     assert len(player.hand_deck.cards) == 3
     assert player.hand_deck.cards == draw_cards[:3]
@@ -200,7 +216,9 @@ def test_apply_effect_draw_draws_available_when_not_enough(
     card_type = _make_card_type(CardAction.DRAW)
     deck_service = DeckService()
 
-    result = logic.apply_effect(player, card, card_type=card_type, deck_service=deck_service)
+    result = logic.apply_effect(
+        player, card, card_type=card_type, deck_service=deck_service
+    )
 
     assert len(player.hand_deck.cards) == 1
     assert len(player.draw_deck.cards) == 0
@@ -218,7 +236,9 @@ def test_apply_effect_draw_empty_deck_draws_nothing(
     card_type = _make_card_type(CardAction.DRAW)
     deck_service = DeckService()
 
-    result = logic.apply_effect(player, card, card_type=card_type, deck_service=deck_service)
+    result = logic.apply_effect(
+        player, card, card_type=card_type, deck_service=deck_service
+    )
 
     assert player.hand_deck.cards == []
     assert result == 0

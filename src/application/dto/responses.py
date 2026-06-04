@@ -67,8 +67,16 @@ class PendingAttackResponse(BaseModel):
     damage: int
 
 
+class GameSummaryResponse(BaseModel):
+    id: UUID
+    name: str
+    status: str
+    players_count: int
+
+
 class GameResponse(BaseModel):
     id: UUID
+    name: str
     status: str
 
     cur_turn: int
@@ -88,6 +96,14 @@ class GameResponse(BaseModel):
 class UserResponse(BaseModel):
     id: UUID
     username: str
+    role: str
+
+
+class UserProfileResponse(BaseModel):
+    id: UUID
+    username: str
+    role: str
+    has_password: bool
 
 
 class DeckResponse(BaseModel):

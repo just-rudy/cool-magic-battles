@@ -162,3 +162,226 @@
 
 ![business-logic-minimal](img/c4-l4-bl-part.png)
 > [png](img/c4-l4-bl-part.png) / [puml](docs/c4-l4-bl-part.puml)
+
+---
+
+# Поддержка нескольких хранилищ данных
+
+Система поддерживает два бэкенда хранилища, переключение между которыми осуществляется через конфигурацию.
+
+**В повседневной разработке и в продакшене используется только PostgreSQL** (`STORAGE_BACKEND=postgres`, миграции Alembic).  
+Реализация на MongoDB сохранена для **лабораторной работы** по смене СУБД и не должна быть включена в `.env` по умолчанию.
+
+## Поддерживаемые бэкенды
+
+| Бэкенд | СУБД | Реализация |
+|--------|------|------------|
+| `postgres` (по умолчанию) | PostgreSQL 16 | SQLAlchemy ORM + psycopg3 |
+| `mongo` | MongoDB 7 | PyMongo (нативный драйвер) |
+
+## Переключение бэкенда
+
+**Через переменную окружения** (рекомендуется):
+```bash
+# PostgreSQL (по умолчанию)
+STORAGE_BACKEND=postgres
+
+# MongoDB
+STORAGE_BACKEND=mongo
+MONGO_URL=mongodb://localhost:27017
+MONGO_DATABASE=cool_magic_battles   # опционально, по умолчанию cool_magic_battles
+```
+
+**Через `config.yaml`**:
+```yaml
+storage:
+  backend: "mongo"   # или "postgres"
+
+mongo:
+  url: "mongodb://localhost:27017"
+  database: "cool_magic_battles"
+```
+
+## Запуск с MongoDB (только лабораторная работа)
+
+```bash
+# 1. Запустить MongoDB
+make mongo-up
+
+# 2. Заполнить данными
+make mongo-seed
+
+# 3. Временно переключить бэкенд (не коммитить STORAGE_BACKEND=mongo в .env для обычной работы)
+STORAGE_BACKEND=mongo make run-api
+# или: make run-with-mongo
+```
+
+## Архитектура хранилища
+
+Оба бэкенда реализуют одни и те же интерфейсы репозиториев из `application/interfaces/`:
+
+```
+application/interfaces/
+├── card_repository.py       # CardRepository (ABC)
+├── card_type_repository.py  # CardTypeRepository (ABC)
+├── game_repository.py       # GameRepository (ABC)
+└── user_repository.py       # UserRepository (ABC)
+
+infrastructure/
+├── db/repositories/         # PostgreSQL реализации (SQLAlchemy)
+│   ├── sqlalchemy_card_repository.py
+│   ├── sqlalchemy_card_type_repository.py
+│   ├── sqlalchemy_game_repository.py
+│   └── sqlalchemy_user_repository.py
+└── mongo/repositories/      # MongoDB реализации (PyMongo)
+    ├── mongo_card_repository.py
+    ├── mongo_card_type_repository.py
+    ├── mongo_game_repository.py
+    └── mongo_user_repository.py
+```
+
+Выбор реализации происходит в `api/dependencies.py` в функции `_make_repositories()` на основе `config.storage_backend`.
+
+## Стратегия хранения в MongoDB
+
+MongoDB репозитории используют **embedded document pattern** — вся игра хранится в одном документе коллекции `games`:
+
+```json
+{
+  "_id": "<game_id>",
+  "status": "in_progress",
+  "players": [
+    {
+      "id": "...", "nickname": "gandalf",
+      "hand_deck": { "cards": [...] },
+      "draw_deck": { "cards": [...] }
+    }
+  ],
+  "market_deck": { "cards": [...] },
+  "pending_attack": { "attacker_id": "...", "damage": 5 }
+}
+```
+
+Это позволяет атомарно сохранять и загружать полное состояние игры одним запросом.
+
+## C4 — L2: Контейнеры (с поддержкой двух хранилищ)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     Cool Magic Battles System                       │
+│                                                                     │
+│  ┌──────────────┐    ┌──────────────────────────────────────────┐  │
+│  │   Frontend   │    │              API Server                  │  │
+│  │  React/Vite  │───▶│           FastAPI (Python)               │  │
+│  │  :5173       │    │              :8000                       │  │
+│  └──────────────┘    └──────────────┬───────────────────────────┘  │
+│                                     │                               │
+│                          ┌──────────┴──────────┐                   │
+│                          │  storage_backend     │                   │
+│                          │  config switch       │                   │
+│                          └──────┬───────┬───────┘                  │
+│                                 │       │                           │
+│                    ┌────────────▼─┐   ┌─▼────────────┐            │
+│                    │  PostgreSQL  │   │   MongoDB    │            │
+│                    │  (SQLAlchemy)│   │  (PyMongo)   │            │
+│                    │  :5433       │   │  :27017      │            │
+│                    └─────────────┘   └──────────────┘            │
+│                                                                     │
+│                    ┌─────────────────────────────┐                 │
+│                    │   MinIO (Image Storage)     │                 │
+│                    │   :9000 / :9001             │                 │
+│                    └─────────────────────────────┘                 │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## C4 — L3: Компоненты API Server (с двумя бэкендами)
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                          API Server                                  │
+│                                                                      │
+│  ┌─────────────┐   ┌──────────────┐   ┌──────────────────────────┐ │
+│  │   Routers   │   │  App Services│   │   dependencies.py        │ │
+│  │  games.py   │──▶│  GameAppSvc  │   │  _make_repositories()    │ │
+│  │  cards.py   │   │  CardImgSvc  │   │                          │ │
+│  │  users.py   │   └──────┬───────┘   │  if backend=="postgres": │ │
+│  └─────────────┘          │           │    SqlAlchemy repos      │ │
+│                            │           │  elif backend=="mongo":  │ │
+│                            │           │    PyMongo repos         │ │
+│                            ▼           └──────────────────────────┘ │
+│                   ┌────────────────┐                                 │
+│                   │  Interfaces    │                                 │
+│                   │  (ABCs)        │                                 │
+│                   │  CardRepo      │                                 │
+│                   │  GameRepo      │                                 │
+│                   │  UserRepo      │                                 │
+│                   │  CardTypeRepo  │                                 │
+│                   └───────┬────────┘                                │
+│                           │                                          │
+│              ┌────────────┴────────────┐                            │
+│              ▼                         ▼                            │
+│   ┌──────────────────┐    ┌──────────────────────┐                 │
+│   │  infrastructure/ │    │  infrastructure/     │                 │
+│   │  db/repositories │    │  mongo/repositories  │                 │
+│   │  (SQLAlchemy)    │    │  (PyMongo)           │                 │
+│   └──────────────────┘    └──────────────────────┘                 │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+## C4 — L4: Слой доступа к данным (оба бэкенда)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     Data Access Layer                               │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │                   Interfaces (ABCs)                          │  │
+│  │  CardRepository  CardTypeRepository  GameRepository          │  │
+│  │  UserRepository                                              │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                          ▲                ▲                         │
+│                          │                │                         │
+│  ┌───────────────────────┤                ├──────────────────────┐  │
+│  │   PostgreSQL Backend  │                │   MongoDB Backend    │  │
+│  │                       │                │                      │  │
+│  │  SqlAlchemyCard       │                │  MongoCard           │  │
+│  │  Repository           │                │  Repository          │  │
+│  │                       │                │                      │  │
+│  │  SqlAlchemyCardType   │                │  MongoCardType       │  │
+│  │  Repository           │                │  Repository          │  │
+│  │                       │                │                      │  │
+│  │  SqlAlchemyGame       │                │  MongoGame           │  │
+│  │  Repository           │                │  Repository          │  │
+│  │  (complex: syncs      │                │  (embedded docs:     │  │
+│  │   players, decks,     │                │   whole game in      │  │
+│  │   deck_cards)         │                │   one document)      │  │
+│  │                       │                │                      │  │
+│  │  SqlAlchemyUser       │                │  MongoUser           │  │
+│  │  Repository           │                │  Repository          │  │
+│  │                       │                │                      │  │
+│  │  Uses: SQLAlchemy ORM │                │  Uses: PyMongo       │  │
+│  │  + psycopg3 driver    │                │  native driver       │  │
+│  └───────────────────────┘                └──────────────────────┘  │
+│                                                                     │
+│  ┌──────────────────────┐   ┌────────────────────────────────────┐ │
+│  │  PostgreSQL 16       │   │  MongoDB 7                         │ │
+│  │  Normalized schema:  │   │  Collections:                      │ │
+│  │  users, cards,       │   │  users, cards, card_types, games   │ │
+│  │  card_types, games,  │   │  (games: embedded players+decks)   │ │
+│  │  players, decks,     │   │                                    │ │
+│  │  deck_cards, images  │   │                                    │ │
+│  └──────────────────────┘   └────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## Сравнение подходов хранения
+
+| Аспект | PostgreSQL (SQLAlchemy) | MongoDB (PyMongo) |
+|--------|------------------------|-------------------|
+| Схема | Нормализованная (8 таблиц) | Embedded documents (4 коллекции) |
+| Транзакции | ACID, полные | Атомарность на уровне документа |
+| Запрос игры | JOIN по 6 таблицам | Один `find_one` |
+| Сохранение игры | Синхронизация 6 таблиц | Один `replace_one` |
+| Миграции | Alembic | Не требуются |
+| Индексы | Автоматически из ORM | Создаются в `__init__` репозитория |
+| Дубликаты | UNIQUE constraint в БД | Unique index в MongoDB |

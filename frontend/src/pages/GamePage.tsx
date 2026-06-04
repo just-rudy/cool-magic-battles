@@ -34,8 +34,8 @@ export function GamePage() {
     return (
       <Layout title="Нужен вход">
         <p className="text-arcane-300">
-          <Link to="/" className="text-gold-400 hover:underline">
-            Войдите в лобби
+          <Link to="/auth" className="text-gold-400 hover:underline">
+            Войдите в систему
           </Link>
           , чтобы играть.
         </p>
@@ -82,7 +82,7 @@ export function GamePage() {
 
   return (
     <Layout
-      title={`Партия ${game.id.slice(0, 8)}…`}
+      title={game.name || `Партия ${game.id.slice(0, 8)}…`}
       subtitle="Разыгрывайте карты, покупайте из рынка и завершайте ход, когда готовы."
     >
       <GameBoard game={game} myPlayer={myPlayer} />

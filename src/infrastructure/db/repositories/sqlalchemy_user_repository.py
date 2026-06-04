@@ -29,6 +29,8 @@ class SqlAlchemyUserRepository(UserRepository):
                 self._session.add(model)
             else:
                 model.username = user.username
+                model.role = user.role.value
+                model.password_hash = user.password_hash
             self._session.commit()
         except IntegrityError as exc:
             self._session.rollback()

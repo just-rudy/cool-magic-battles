@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   buyCard,
+  defendCard,
   endTurn,
   finishGame,
   getGame,
   playCard,
+  skipDefend,
   startGame,
+  type PlayCardParams,
 } from '@/entities/game/api/gameApi'
 
 export const gameQueryKey = (gameId: string) => ['game', gameId] as const
@@ -28,7 +31,18 @@ export function useGameActions(gameId: string, playerId: string) {
   }
 
   const play = useMutation({
-    mutationFn: (cardId: string) => playCard(gameId, playerId, cardId),
+    mutationFn: (params: PlayCardParams) =>
+      playCard(gameId, playerId, params),
+    onSuccess: invalidate,
+  })
+
+  const defend = useMutation({
+    mutationFn: (cardId: string) => defendCard(gameId, playerId, cardId),
+    onSuccess: invalidate,
+  })
+
+  const skipDefendMutation = useMutation({
+    mutationFn: () => skipDefend(gameId, playerId),
     onSuccess: invalidate,
   })
 
@@ -54,13 +68,21 @@ export function useGameActions(gameId: string, playerId: string) {
 
   const pending =
     play.isPending ||
+    defend.isPending ||
+    skipDefendMutation.isPending ||
     buy.isPending ||
     end.isPending ||
     start.isPending ||
     finish.isPending
 
   const error =
-    play.error || buy.error || end.error || start.error || finish.error
+    play.error ||
+    defend.error ||
+    skipDefendMutation.error ||
+    buy.error ||
+    end.error ||
+    start.error ||
+    finish.error
 
-  return { play, buy, end, start, finish, pending, error }
+  return { play, defend, skipDefend: skipDefendMutation, buy, end, start, finish, pending, error }
 }

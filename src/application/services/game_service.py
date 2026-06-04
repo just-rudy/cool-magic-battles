@@ -1,4 +1,5 @@
 import random
+import re
 from uuid import UUID
 
 from application.dto.requests import CreateGameRequest
@@ -38,10 +39,60 @@ class GameAppService:
         )
 
     def create_new_game(self, request: CreateGameRequest) -> Game:
-        return self._logic.create_game(request.host_user_id)
+        name = self._resolve_game_name(request.name)
+        return self._logic.create_game(request.host_user_id, name=name)
+
+    def _resolve_game_name(self, requested: str | None) -> str:
+        """Валидирует имя (латиница + цифры) или генерирует game-xxx."""
+        if requested and requested.strip():
+            clean = requested.strip()
+            if not re.fullmatch(r"[A-Za-z0-9\-]+", clean):
+                raise ValueError(
+                    "Game name must contain only Latin letters, digits and hyphen"
+                )
+            if self._game_repository.get_by_name(clean) is not None:
+                raise ValueError("Game name already taken")
+            return clean
+        for _ in range(20):
+            candidate = f"game-{random.randint(100, 999)}"
+            if self._game_repository.get_by_name(candidate) is None:
+                return candidate
+        return f"game-{random.randint(1000, 9999)}"
+
+    def resolve_game_id(self, game_ref: str) -> UUID:
+        ref = game_ref.strip()
+        if not ref:
+            raise ValueError("Game reference is required")
+
+        try:
+            game_id = UUID(ref)
+        except ValueError:
+            game = self._game_repository.get_by_name(ref)
+            if game is None:
+                raise ValueError(f"Game '{ref}' not found") from None
+            return game.id
+
+        if not self._game_repository.exists(game_id):
+            raise ValueError("Game not found")
+        return game_id
+
+    def list_joinable_games(self) -> list[Game]:
+        from domain.enums import GameStatus
+
+        return [
+            game
+            for game in self._game_repository.list_all()
+            if game.status in (GameStatus.CREATED, GameStatus.IN_PROGRESS)
+        ]
+
+    def list_games(self) -> list[Game]:
+        return self._game_repository.list_all()
 
     def get_game(self, game_id: UUID) -> Game:
         return self._game_repository.get(game_id)
+
+    def delete_game(self, game_id: UUID) -> None:
+        self._game_repository.delete(game_id)
 
     def join_game(self, game_id: UUID, user_id: UUID) -> Game:
         self._logic.add_player(game_id, user_id)
@@ -87,10 +138,11 @@ class GameAppService:
     def _generate_cards(self, count: int) -> list[Card]:
         all_cards = self._card_repository.list_all()
         if len(all_cards) < count:
-            raise ValueError(
-                f"Not enough cards in the database: need {count}, have {len(all_cards)}. "
-                "Run `make db-seed` to populate cards."
+            msg = (
+                f"Not enough cards in database: need {count}, "
+                f"have {len(all_cards)}. Run `make db-seed` to populate cards."
             )
+            raise ValueError(msg)
         return random.sample(all_cards, count)
 
     def play_card(
@@ -105,6 +157,10 @@ class GameAppService:
 
     def defend(self, game_id: UUID, defender_id: UUID, card_id: UUID) -> Game:
         self._logic.defend(game_id, defender_id, card_id)
+        return self._game_repository.get(game_id)
+
+    def skip_defend(self, game_id: UUID, player_id: UUID) -> Game:
+        self._logic.skip_defend(game_id, player_id)
         return self._game_repository.get(game_id)
 
     def buy_card(self, game_id: UUID, player_id: UUID, card_id: UUID) -> Game:

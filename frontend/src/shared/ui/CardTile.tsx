@@ -87,16 +87,11 @@ export function CardTile({
       <span className="text-[10px] uppercase tracking-[0.2em] text-arcane-300">
         {card.creature}
       </span>
-      <div
-        className={[
-          'mt-3 grid gap-1 text-xs text-arcane-300',
-          compact ? 'grid-cols-2' : 'grid-cols-3',
-        ].join(' ')}
-      >
+      <div className="mt-3 grid grid-cols-2 gap-1 text-xs text-arcane-300">
         <Stat label="Сила" value={card.power} />
         <Stat label="Эхо" value={card.echo} />
         <Stat label="Цена" value={card.cost} />
-        {!compact && <Stat label="Крутость" value={card.cool_points} />}
+        <Stat label="Крутость" value={card.cool_points} />
       </div>
 
       {/* Тултип с описанием эффекта */}

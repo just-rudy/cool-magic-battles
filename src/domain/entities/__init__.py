@@ -6,4 +6,13 @@ from .image import Image
 from .player import Player
 from .user import User
 
-__all__ = ["Card", "Deck", "Game", "Image", "Player", "User", "CardType", "PendingAttack"]
+__all__ = [
+    "Card",
+    "Deck",
+    "Game",
+    "Image",
+    "Player",
+    "User",
+    "CardType",
+    "PendingAttack",
+]

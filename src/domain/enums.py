@@ -7,6 +7,14 @@ class GameStatus(str, Enum):
     FINISHED = "finished"
 
 
+class UserRole(str, Enum):
+    GUEST = "guest"
+    AUTHENTICATED = "authenticated"
+    PLAYER = "player"
+    MODERATOR = "moderator"
+    MASTER = "master"
+
+
 class CardAction(str, Enum):
     ATTACK = "attack"
     DEF = "defense"

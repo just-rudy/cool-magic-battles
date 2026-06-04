@@ -4,12 +4,12 @@ from dataclasses import dataclass
 from functools import lru_cache
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
+from domain.card_colors import color_for_action
 from domain.entities import Card, CardType, Image
 from domain.enums import CardAction, UsePattern
 
 CARD_TYPE_NAMESPACE = uuid5(NAMESPACE_URL, "cool-magic-battles/card-types")
 CARD_IMAGE_NAMESPACE = uuid5(NAMESPACE_URL, "cool-magic-battles/card-images")
-CARD_TYPE_COLORS = ("red", "blue", "green", "yellow", "pink", "orange")
 
 
 def _build_card_type(
@@ -17,15 +17,14 @@ def _build_card_type(
     usage_pattern: UsePattern,
     *,
     if_permanent: bool,
-    color: str,
 ) -> CardType:
-    card_type_key = f"{action.value}:{usage_pattern.value}:{int(if_permanent)}:{color}"
+    card_type_key = f"{action.value}:{usage_pattern.value}:{int(if_permanent)}"
     return CardType(
         id=uuid5(CARD_TYPE_NAMESPACE, card_type_key),
         action=action,
         usage_pattern=usage_pattern,
         if_permanent=if_permanent,
-        color=color,
+        color=color_for_action(action),
     )
 
 
@@ -33,34 +32,36 @@ def _build_card_type(
 def list_card_types() -> tuple[CardType, ...]:
     card_types: list[CardType] = []
 
-    for color in CARD_TYPE_COLORS:
-        # ATTACK: reg
+    card_types.append(
+        _build_card_type(CardAction.ATTACK, UsePattern.REG, if_permanent=False)
+    )
+
+    card_types.append(
+        _build_card_type(CardAction.DRAW, UsePattern.REG, if_permanent=False)
+    )
+
+    for usage_pattern in (UsePattern.DISCARD, UsePattern.ON_TOP):
         card_types.append(
-            _build_card_type(CardAction.ATTACK, UsePattern.REG, if_permanent=False, color=color)
+            _build_card_type(
+                CardAction.DEF,
+                usage_pattern,
+                if_permanent=False,
+            )
         )
 
-        # DRAW: reg
+    for usage_pattern in (UsePattern.REG, UsePattern.DISCARD):
         card_types.append(
-            _build_card_type(CardAction.DRAW, UsePattern.REG, if_permanent=False, color=color)
+            _build_card_type(
+                CardAction.HEAL,
+                usage_pattern,
+                if_permanent=False,
+            )
         )
 
-        # DEF: discard, on_top
-        for usage_pattern in (UsePattern.DISCARD, UsePattern.ON_TOP):
-            card_types.append(
-                _build_card_type(CardAction.DEF, usage_pattern, if_permanent=False, color=color)
-            )
-
-        # HEAL: reg, discard
-        for usage_pattern in (UsePattern.REG, UsePattern.DISCARD):
-            card_types.append(
-                _build_card_type(CardAction.HEAL, usage_pattern, if_permanent=False, color=color)
-            )
-
-        # HAND_BUFF, ECHO_BUFF: только banish
-        for action in (CardAction.HAND_BUFF, CardAction.ECHO_BUFF):
-            card_types.append(
-                _build_card_type(action, UsePattern.BANISH, if_permanent=False, color=color)
-            )
+    for action in (CardAction.HAND_BUFF, CardAction.ECHO_BUFF):
+        card_types.append(
+            _build_card_type(action, UsePattern.BANISH, if_permanent=False)
+        )
 
     return tuple(card_types)
 

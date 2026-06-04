@@ -1,8 +1,13 @@
-import type { Game, Player } from '@/entities/game/model/types'
+import type { Card, Game, Player } from '@/entities/game/model/types'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CardTile } from '@/shared/ui/CardTile'
 import { isMyTurn } from '@/shared/lib/game'
+import {
+  cardNeedsTarget,
+  isDefenseCard,
+  targetSelectionHint,
+} from '@/shared/lib/cardPlay'
 import { PlayersBar } from '@/features/game/components/PlayersBar'
 import { useGameActions } from '@/features/game/hooks/useGame'
 import { getPlayerCards } from '@/entities/game/api/gameApi'
@@ -14,12 +19,42 @@ interface GameBoardProps {
 
 export function GameBoard({ game, myPlayer }: GameBoardProps) {
   const myTurn = isMyTurn(game, myPlayer.id)
-  const { play, buy, end, start, finish, pending, error } = useGameActions(
+  const { play, defend, skipDefend, buy, end, start, finish, pending, error } = useGameActions(
     game.id,
     myPlayer.id,
   )
   const [showOwnCards, setShowOwnCards] = useState(false)
+  const [targetingCard, setTargetingCard] = useState<Card | null>(null)
   const activePlayer = game.players.find((player) => player.id === game.cur_player_id)
+
+  const isUnderAttack =
+    game.pending_attack?.defender_id === myPlayer.id &&
+    game.status === 'in_progress'
+
+  const attacker = game.pending_attack
+    ? game.players.find((p) => p.id === game.pending_attack!.attacker_id)
+    : null
+
+  const handlePlayCard = (card: Card) => {
+    if (isDefenseCard(card)) {
+      return
+    }
+    if (cardNeedsTarget(card)) {
+      setTargetingCard(card)
+      return
+    }
+    play.mutate({ cardId: card.id })
+  }
+
+  const handleSelectTarget = (targetId: string) => {
+    if (!targetingCard) return
+    play.mutate(
+      { cardId: targetingCard.id, targetId },
+      { onSettled: () => setTargetingCard(null) },
+    )
+  }
+
+  const cancelTargeting = () => setTargetingCard(null)
 
   const { data: ownCards, isLoading: isLoadingOwnCards } = useQuery({
     queryKey: ['player-cards', game.id, myPlayer.id],
@@ -92,10 +127,28 @@ export function GameBoard({ game, myPlayer }: GameBoardProps) {
               <div>
                 <div className="font-semibold">Атака в процессе!</div>
                 <div className="text-xs text-red-200/80">
-                  Урон: {game.pending_attack.damage} · Защитник может сыграть DEF карту
+                  {attacker?.nickname ?? 'Игрок'} атакует · урон:{' '}
+                  {game.pending_attack.damage}
+                  {isUnderAttack
+                    ? ' · Сыграйте карту защиты из руки'
+                    : ' · Ожидание защиты'}
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {targetingCard && (
+          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-cyan-400/40 bg-cyan-950/30 px-4 py-3 text-sm text-cyan-100">
+            <span>{targetSelectionHint(targetingCard)}</span>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={cancelTargeting}
+              className="rounded-lg border border-cyan-400/40 px-3 py-1 text-xs hover:bg-cyan-900/50"
+            >
+              Отмена
+            </button>
           </div>
         )}
 
@@ -150,7 +203,13 @@ export function GameBoard({ game, myPlayer }: GameBoardProps) {
         )}
       </section>
 
-      <PlayersBar game={game} myPlayerId={myPlayer.id} />
+      <PlayersBar
+        game={game}
+        myPlayerId={myPlayer.id}
+        targetCard={targetingCard}
+        onSelectTarget={targetingCard ? handleSelectTarget : undefined}
+        pending={pending}
+      />
 
       {game.status === 'finished' && (
         <section className="rounded-2xl border border-sky-500/30 bg-sky-950/20 p-5">
@@ -240,6 +299,37 @@ export function GameBoard({ game, myPlayer }: GameBoardProps) {
         </div>
       </section>
 
+      {isUnderAttack && (
+        <section className="rounded-2xl border border-blue-400/40 bg-blue-950/25 p-5">
+          <h2 className="mb-2 text-lg font-semibold text-white">
+            Защита от атаки
+          </h2>
+          <p className="mb-4 text-sm text-arcane-300">
+            Выберите карту защиты из руки, чтобы уменьшить урон (
+            {game.pending_attack!.damage}), или пропустите — урон будет нанесён сразу.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {myPlayer.hand.filter(isDefenseCard).map((card) => (
+              <CardTile
+                key={card.id}
+                card={card}
+                highlight
+                disabled={pending}
+                onClick={() => defend.mutate(card.id)}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => skipDefend.mutate()}
+            className="mt-4 rounded-xl border border-red-400/50 bg-red-950/40 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-900/60 disabled:opacity-50"
+          >
+            Пропустить защиту (получить {game.pending_attack!.damage} урона)
+          </button>
+        </section>
+      )}
+
       <section>
         <h2 className="mb-3 text-lg font-semibold text-white">
           Ваша рука ({myPlayer.hand.length})
@@ -248,16 +338,33 @@ export function GameBoard({ game, myPlayer }: GameBoardProps) {
           {myPlayer.hand.length === 0 && (
             <p className="text-arcane-300">На руке нет карт</p>
           )}
-          {myPlayer.hand.map((card) => (
-            <CardTile
-              key={card.id}
-              card={card}
-              highlight
-              disabled={!myTurn || pending}
-              onClick={() => play.mutate(card.id)}
-            />
-          ))}
+          {myPlayer.hand.map((card) => {
+            const isDef = isDefenseCard(card)
+            const canDefend = isUnderAttack && isDef
+            const canPlay = myTurn && !isDef && !targetingCard
+
+            return (
+              <CardTile
+                key={card.id}
+                card={card}
+                highlight={canDefend || canPlay}
+                disabled={pending || (!canDefend && !canPlay)}
+                onClick={
+                  canDefend
+                    ? () => defend.mutate(card.id)
+                    : canPlay
+                      ? () => handlePlayCard(card)
+                      : undefined
+                }
+              />
+            )
+          })}
         </div>
+        {myTurn && (
+          <p className="mt-2 text-xs text-arcane-400">
+            Атака и лечение требуют выбора цели. Защита — только в ответ на атаку.
+          </p>
+        )}
       </section>
 
       {activePlayer && activePlayer.table.length > 0 && (

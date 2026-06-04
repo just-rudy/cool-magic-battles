@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from application.services.deck_service import DeckService
 from domain.entities.card import Card
 from domain.entities.card_type import CardType
 from domain.entities.player import Player
 from domain.enums import CardAction, UsePattern
+from domain.player_health import apply_heal
 
 
 class CardLogic:
@@ -29,7 +31,7 @@ class CardLogic:
         card: Card,
         card_type: CardType | None = None,
         target: Player | None = None,
-        deck_service: object | None = None,
+        deck_service: DeckService | None = None,
     ) -> int:
         """Применяет эффект карты. Возвращает урон для ATTACK (до применения),
         0 для всех остальных действий."""
@@ -51,7 +53,7 @@ class CardLogic:
         if action == CardAction.HEAL:
             if target is None:
                 raise ValueError("HEAL card requires a target player")
-            target.health = min(target.health + card.power, 20)
+            target.health = apply_heal(target.health, card.power)
 
         elif action == CardAction.DEF:
             # DEF применяется через apply_defense, не здесь
@@ -62,7 +64,7 @@ class CardLogic:
                 available = len(player.draw_deck.cards)
                 num = min(card.power, available)
                 if num > 0:
-                    drawn = deck_service.draw(player.draw_deck, num)  # type: ignore[union-attr]
+                    drawn = deck_service.draw(player.draw_deck, num)
                     player.hand_deck.cards.extend(drawn)
 
         elif action == CardAction.HAND_BUFF:

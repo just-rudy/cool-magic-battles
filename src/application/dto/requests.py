@@ -7,10 +7,16 @@ from pydantic import BaseModel
 
 class CreateGameRequest(BaseModel):
     host_user_id: UUID
+    name: str | None = None
 
 
 class JoinGameRequest(BaseModel):
     user_id: UUID
+
+
+class JoinGameByRefRequest(BaseModel):
+    user_id: UUID
+    game_ref: str
 
 
 class PlayCardRequest(BaseModel):
@@ -42,3 +48,23 @@ class UpdateCardImageRequest(BaseModel):
     filename: str
     content_base64: str
     content_type: str = "application/octet-stream"
+
+
+class CreateCardRequest(BaseModel):
+    title: str
+    creature: str
+    card_type_id: UUID
+    power: int = 1
+    echo: int = 1
+    cost: int = 3
+    cool_points: int = 0
+
+
+class UpdateCardRequest(BaseModel):
+    title: str
+    creature: str
+    card_type_id: UUID
+    power: int
+    echo: int
+    cost: int
+    cool_points: int

@@ -120,6 +120,7 @@ class SqlAlchemyGameRepository(GameRepository):
                 self._session.flush()
             else:
                 model.host_user_id = game.host_user_id
+                model.name = game.name
                 model.status = game.status.value
                 model.cur_turn = game.cur_turn
                 model.cur_player_id = game.cur_player_id
@@ -336,3 +337,31 @@ class SqlAlchemyGameRepository(GameRepository):
 
     def exists(self, game_id: UUID) -> bool:
         return self._session.get(GameModel, game_id) is not None
+
+    def list_all(self) -> list[Game]:
+        """Возвращает краткий список всех игр (без колод и игроков)."""
+        models = self._session.query(GameModel).order_by(GameModel.id).all()
+        games = []
+        for model in models:
+            game = GameMapper.to_domain(model)
+            # Загружаем только игроков (без колод) для подсчёта
+            player_models = (
+                self._session.query(PlayerModel)
+                .filter(PlayerModel.game_id == model.id)
+                .all()
+            )
+            game.players = [
+                PlayerMapper.to_domain(pm) for pm in player_models
+            ]
+            games.append(game)
+        return games
+
+    def get_by_name(self, name: str) -> "Game | None":
+        model = (
+            self._session.query(GameModel)
+            .filter(GameModel.name == name)
+            .first()
+        )
+        if model is None:
+            return None
+        return self.get(model.id)

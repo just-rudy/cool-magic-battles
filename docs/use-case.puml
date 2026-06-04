@@ -1,33 +1,50 @@
-@startuml use-case
-
+@startuml
 left to right direction
+skinparam packageStyle rectangle
 
-actor Пользователь
-actor Игрок
-actor Модератор
+actor "Мастер" as master
+actor "Модератор" as moderator
+actor "Авторизованный пользователь" as authUser
+actor "Игрок" as player
+actor "Гость" as guest
 
-rectangle "Игровая система" {
-
-    Пользователь -- (Регистрация)
-    Пользователь -- (Авторизация)
-
-    Пользователь -- (Создать игру)
-    Пользователь -- (Присоединиться к игре)
-
-    Пользователь -- (Просмотр правил игры)
-    Пользователь -- (Просмотр каталога карт)
-
-    Игрок -- (Начать ход)
-    Игрок -- (Сыграть карту)
-    Игрок -- (Купить карту)
-    Игрок -- (Сбросить карту)
-    Игрок -- (Завершить ход)
-
-    Модератор -- (Добавить карту)
-    Модератор -- (Редактировать карту)
-    Модератор -- (Удалить карту)
-    Модератор -- (Бан игроков)
-    Модератор -- (Завершение текущих игр)
+rectangle "Система" {
+  usecase "Изменение существующих карт" as UC1
+  usecase "Удаление имеющихся карт" as UC2
+  usecase "Добавление новых карт" as UC3
+  usecase "Блокировка и разблокировка пользователей" as UC4
+  usecase "Просмотр текущих игр" as UC5
+  usecase "Завершение текущих игр" as UC6
+  usecase "Создание новой игры" as UC7
+  usecase "Присоединиться к текущей игре" as UC8
+  usecase "Выполнить ход" as UC9
+  usecase "Набрать руку" as UC10
+  usecase "Сбросить руку" as UC11
+  usecase "Совершить покупку карт" as UC12
+  usecase "Сыграть карту" as UC13
+  usecase "Просмотр правил игры" as UC14
+  usecase "Просмотр каталога карт игры" as UC15
 }
+
+master --> UC1
+master --> UC2
+master --> UC3
+
+moderator --> UC4
+moderator --> UC5
+moderator --> UC6
+moderator --> UC5
+
+authUser --> UC7
+authUser --> UC8
+
+player --> UC9
+UC9 --> UC10
+UC9 --> UC11
+UC9 --> UC12
+UC9 --> UC13
+
+guest --> UC14
+guest --> UC15
 
 @enduml

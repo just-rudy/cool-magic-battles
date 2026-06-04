@@ -18,6 +18,7 @@ class GameModel(Base):
     host_user_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
+    name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     status: Mapped[str] = mapped_column(String(50), nullable=False)
     cur_turn: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     cur_player_id: Mapped[UUID | None] = mapped_column(

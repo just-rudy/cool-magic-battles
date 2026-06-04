@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from domain.entities import User
+from domain.enums import UserRole
 from infrastructure.db.exceptions import EntityNotFoundError, EntityValidationError
 from infrastructure.db.repositories.sqlalchemy_user_repository import (
     SqlAlchemyUserRepository,
@@ -19,6 +20,7 @@ def test_save_and_get_user(session: Session) -> None:
 
     assert loaded.id == user.id
     assert loaded.username == "alice"
+    assert loaded.role == UserRole.AUTHENTICATED
 
 
 def test_update_user(session: Session) -> None:
@@ -31,6 +33,18 @@ def test_update_user(session: Session) -> None:
 
     loaded = repo.get(user.id)
     assert loaded.username == "alice_new"
+
+
+def test_update_user_role(session: Session) -> None:
+    repo = SqlAlchemyUserRepository(session)
+    user = User(id=uuid4(), username="alice")
+    repo.save(user)
+
+    user.role = UserRole.MODERATOR
+    repo.save(user)
+
+    loaded = repo.get(user.id)
+    assert loaded.role == UserRole.MODERATOR
 
 
 def test_delete_user(session: Session) -> None:

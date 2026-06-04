@@ -521,7 +521,9 @@ def test_play_card_moves_card_from_hand_to_table_cur_expected_domain_behavior(
 
     assert card not in player.hand_deck.cards
     assert card in player.table_deck.cards
-    card_logic.apply_effect.assert_called_once_with(player, card, None, None, logic._deck_service)
+    card_logic.apply_effect.assert_called_once_with(
+        player, card, None, None, logic._deck_service
+    )
     game_repository.save.assert_called_once_with(game)
 
 
@@ -791,7 +793,9 @@ def test_defend_raises_error_when_not_the_defender(
     )
     game_repository.get.return_value = game
 
-    with pytest.raises(ValueError, match="You are not the target of the current attack"):
+    with pytest.raises(
+        ValueError, match="You are not the target of the current attack"
+    ):
         logic.defend(game.id, other_player.id, def_card.id)
 
 
@@ -834,3 +838,60 @@ def test_defend_raises_error_when_card_cannot_defend(
 
     with pytest.raises(ValueError, match="This DEF card cannot be played as defense"):
         logic.defend(game.id, defender.id, def_card.id)
+
+
+def test_apply_damage_respawns_at_default_health_when_killed(
+    game_logic: tuple[GameLogic, Mock, Mock, Mock, Mock, Mock],
+    make_player: Callable[..., Player],
+) -> None:
+    from domain.player_health import DEFAULT_PLAYER_HEALTH
+
+    logic, *_ = game_logic
+    player = make_player(health=5)
+
+    logic._apply_damage(player, 10)
+
+    assert player.health == DEFAULT_PLAYER_HEALTH
+
+
+def test_play_heal_without_target_id_targets_self(
+    game_logic: tuple[GameLogic, Mock, Mock, Mock, Mock, Mock],
+    make_game: Callable[..., Game],
+    make_player: Callable[..., Player],
+    make_card: Callable[..., Card],
+) -> None:
+    from domain.entities.card_type import CardType
+    from domain.enums import CardAction, UsePattern
+
+    logic, game_repository, _, card_logic, _, state_manager = game_logic
+    player = make_player(health=10)
+    card = make_card(power=3, echo=0)
+    player.hand_deck.cards.append(card)
+
+    card_type = CardType(
+        id=uuid4(),
+        action=CardAction.HEAL,
+        usage_pattern=UsePattern.REG,
+        color="green",
+    )
+    card.card_type_id = card_type.id
+
+    game = make_game(
+        host_user_id=uuid4(),
+        players=[player],
+        status=GameStatus.IN_PROGRESS,
+        cur_player_id=player.id,
+    )
+    game_repository.get.return_value = game
+    state_manager.validate_turn.return_value = True
+    card_logic.can_be_played.return_value = True
+    card_logic.apply_effect.return_value = 0
+
+    logic._card_type_repo = Mock()
+    logic._card_type_repo.get.return_value = card_type
+
+    logic.play_card(game.id, player.id, card.id)
+
+    card_logic.apply_effect.assert_called_once_with(
+        player, card, card_type, player, logic._deck_service
+    )

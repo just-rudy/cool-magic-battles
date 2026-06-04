@@ -14,7 +14,8 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        // target: 'https://cmb-api.nachert.art/',
+        target: 'http://localhost:8000/', // for local development
         changeOrigin: true,
       },
     },

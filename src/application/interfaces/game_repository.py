@@ -20,3 +20,11 @@ class GameRepository(ABC):
     @abstractmethod
     def exists(self, game_id: UUID) -> bool:
         raise NotImplementedError
+
+    @abstractmethod
+    def list_all(self) -> list[Game]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_by_name(self, name: str) -> Game | None:
+        raise NotImplementedError

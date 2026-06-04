@@ -24,7 +24,7 @@ export const actionColors: Record<string, string> = {
     draw: 'text-purple-400',
     heal: 'text-green-400',
     hand_buff: 'text-yellow-400',
-    echo_buff: 'text-cyan-400',
+    echo_buff: 'text-pink-400',
 }
 
 export const usagePatternLabels: Record<string, string> = {
@@ -47,7 +47,7 @@ export function getCardEffectDescription(card: Card): string {
         attack: `Наносит ${power} урона цели`,
         defense: `Блокирует ${power} урона`,
         draw: `Добирает ${power} карт(ы)`,
-        heal: `Восстанавливает ${power} здоровья цели (макс. 20)`,
+        heal: `Восстанавливает ${power} здоровья цели (макс. 25)`,
         hand_buff: `Увеличивает размер руки на ${power}`,
         echo_buff: `Увеличивает базовое эхо на ${power}`,
     }

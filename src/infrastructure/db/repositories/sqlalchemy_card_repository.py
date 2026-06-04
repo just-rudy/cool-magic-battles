@@ -69,7 +69,10 @@ class SqlAlchemyCardRepository(CardRepository):
     def get(self, card_id: UUID) -> Card:
         model = (
             self._session.query(CardModel)
-            .options(selectinload(CardModel.image))
+            .options(
+                selectinload(CardModel.image),
+                selectinload(CardModel.card_type),
+            )
             .filter(CardModel.id == card_id)
             .one_or_none()
         )
@@ -96,7 +99,10 @@ class SqlAlchemyCardRepository(CardRepository):
     def list_all(self) -> list[Card]:
         models = (
             self._session.query(CardModel)
-            .options(selectinload(CardModel.image))
+            .options(
+                selectinload(CardModel.image),
+                selectinload(CardModel.card_type),
+            )
             .order_by(CardModel.title.asc())
             .all()
         )
@@ -105,7 +111,10 @@ class SqlAlchemyCardRepository(CardRepository):
     def find_by_title(self, title: str) -> Card | None:
         model = (
             self._session.query(CardModel)
-            .options(selectinload(CardModel.image))
+            .options(
+                selectinload(CardModel.image),
+                selectinload(CardModel.card_type),
+            )
             .filter(CardModel.title == title)
             .one_or_none()
         )

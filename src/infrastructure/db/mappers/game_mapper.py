@@ -21,6 +21,7 @@ class GameMapper:
         return Game(
             id=model.id,
             host_user_id=model.host_user_id,
+            name=model.name or "",
             status=GameStatus(model.status),
             cur_turn=model.cur_turn,
             cur_player_id=model.cur_player_id,
@@ -33,6 +34,7 @@ class GameMapper:
         return GameModel(
             id=entity.id,
             host_user_id=entity.host_user_id,
+            name=entity.name,
             status=entity.status.value,
             cur_turn=entity.cur_turn,
             cur_player_id=entity.cur_player_id,

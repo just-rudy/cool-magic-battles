@@ -55,8 +55,16 @@ export interface PendingAttack {
   damage: number
 }
 
+export interface GameSummary {
+  id: string
+  name: string
+  status: string
+  players_count: number
+}
+
 export interface Game {
   id: string
+  name: string
   status: string
   cur_turn: number
   cur_player_id: string | null
@@ -71,4 +79,12 @@ export interface Game {
 export interface User {
   id: string
   username: string
+  role: string
+}
+
+export interface UserProfile {
+  id: string
+  username: string
+  role: string
+  has_password: boolean
 }

@@ -21,6 +21,27 @@ def make_image(title: str) -> Image:
     )
 
 
+def test_save_and_get_game_by_name(session: Session) -> None:
+    user_repo = SqlAlchemyUserRepository(session)
+    game_repo = SqlAlchemyGameRepository(session)
+
+    host = User(id=uuid4(), username="host")
+    user_repo.save(host)
+
+    game = Game(
+        id=uuid4(),
+        host_user_id=host.id,
+        status=GameStatus.CREATED,
+        name="myarena",
+    )
+    game_repo.save(game)
+
+    loaded = game_repo.get_by_name("myarena")
+    assert loaded is not None
+    assert loaded.id == game.id
+    assert loaded.name == "myarena"
+
+
 def test_save_and_get_game_with_players(session: Session) -> None:
     user_repo = SqlAlchemyUserRepository(session)
     game_repo = SqlAlchemyGameRepository(session)

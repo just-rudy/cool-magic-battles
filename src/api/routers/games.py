@@ -1,37 +1,64 @@
+import logging
 from typing import Annotated
 from uuid import UUID
-import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
 logger = logging.getLogger(__name__)
 
-from api.dependencies import get_card_image_service, get_game_service
+from api.dependencies import (  # noqa: E402
+    CurrentActor,
+    get_card_image_service,
+    get_game_service,
+    require_any_permission,
+    require_permission,
+)
 from application.dto.requests import (  # noqa: E402
     BuyCardRequest,
     CreateGameRequest,
     DefendRequest,
     EndTurnRequest,
     FinishGameRequest,
+    JoinGameByRefRequest,
     JoinGameRequest,
     PlayCardRequest,
 )
-from application.dto.responses import (
+from application.dto.responses import (  # noqa: E402
     CardResponse,
     CardTypeResponse,
     GameResponse,
+    GameSummaryResponse,
     ImageResponse,
     PendingAttackResponse,
     PlayerResponse,
     WinnerResponse,
 )
-from application.services.card_image_service import CardImageService
-from application.services.game_service import GameAppService
-from domain.entities import Card, Game, Player
-from domain.enums import GameStatus
-from infrastructure.db.exceptions import EntityNotFoundError
+from application.services.access_control import (  # noqa: E402
+    Operation,
+    Resource,
+    has_permission,
+)
+from application.services.card_image_service import CardImageService  # noqa: E402
+from application.services.game_service import GameAppService  # noqa: E402
+from domain.card_colors import color_for_action  # noqa: E402
+from domain.entities import Card, Game, Player  # noqa: E402
+from domain.enums import GameStatus  # noqa: E402
+from infrastructure.db.exceptions import EntityNotFoundError  # noqa: E402
 
 router = APIRouter()
+
+GAMEPLAY_PERMISSION = (
+    (Resource.DECKS, Operation.UPDATE),
+    (Resource.GAMES, Operation.UPDATE),
+)
+
+
+def ensure_self_or_admin(actor: CurrentActor, user_id: UUID) -> None:
+    if actor.user is not None and actor.user.id == user_id:
+        return
+    if has_permission(actor.role, Resource.USERS, Operation.UPDATE):
+        return
+    raise HTTPException(status_code=403, detail="Cannot act for another user")
 
 
 def build_card_response(
@@ -66,7 +93,7 @@ def build_card_response(
                 id=card.card_type.id,
                 action=card.card_type.action.value,
                 usage_pattern=card.card_type.usage_pattern.value,
-                color=card.card_type.color,
+                color=color_for_action(card.card_type.action),
             )
             if card.card_type is not None
             else None
@@ -141,6 +168,7 @@ def build_game_response(
 ) -> GameResponse:
     return GameResponse(
         id=game.id,
+        name=game.name,
         status=game.status.value,
         cur_turn=game.cur_turn,
         cur_player_id=game.cur_player_id,
@@ -166,6 +194,52 @@ def build_game_response(
 
 
 @router.get(
+    "",
+    response_model=list[GameSummaryResponse],
+)
+def list_games(
+    service: Annotated[GameAppService, Depends(get_game_service)],
+    _: Annotated[
+        CurrentActor,
+        Depends(require_permission(Resource.GAMES, Operation.READ)),
+    ],
+) -> list[GameSummaryResponse]:
+    return [
+        GameSummaryResponse(
+            id=game.id,
+            name=game.name,
+            status=game.status.value,
+            players_count=len(game.players),
+        )
+        for game in service.list_joinable_games()
+    ]
+
+
+@router.post(
+    "/join",
+    response_model=GameResponse,
+)
+def join_game_by_ref(
+    request: JoinGameByRefRequest,
+    service: Annotated[GameAppService, Depends(get_game_service)],
+    image_service: Annotated[CardImageService, Depends(get_card_image_service)],
+    actor: Annotated[
+        CurrentActor,
+        Depends(require_permission(Resource.PLAYERS, Operation.CREATE)),
+    ],
+) -> GameResponse:
+    try:
+        ensure_self_or_admin(actor, request.user_id)
+        game_id = service.resolve_game_id(request.game_ref)
+        game = service.join_game(game_id, request.user_id)
+        return build_game_response(game, image_service)
+    except EntityNotFoundError as ex:
+        raise HTTPException(status_code=404, detail=str(ex)) from ex
+    except ValueError as ex:
+        raise HTTPException(status_code=400, detail=str(ex)) from ex
+
+
+@router.get(
     "/{game_id}",
     response_model=GameResponse,
 )
@@ -173,6 +247,10 @@ def get_game(
     game_id: UUID,
     service: Annotated[GameAppService, Depends(get_game_service)],
     image_service: Annotated[CardImageService, Depends(get_card_image_service)],
+    _: Annotated[
+        CurrentActor,
+        Depends(require_permission(Resource.GAMES, Operation.READ)),
+    ],
 ) -> GameResponse:
     try:
         game = service.get_game(game_id)
@@ -185,6 +263,24 @@ def get_game(
     return build_game_response(game, image_service)
 
 
+@router.delete(
+    "/{game_id}",
+    status_code=204,
+)
+def delete_game(
+    game_id: UUID,
+    service: Annotated[GameAppService, Depends(get_game_service)],
+    _: Annotated[
+        CurrentActor,
+        Depends(require_permission(Resource.GAMES, Operation.DELETE)),
+    ],
+) -> None:
+    try:
+        service.delete_game(game_id)
+    except EntityNotFoundError as ex:
+        raise HTTPException(status_code=404, detail=str(ex)) from ex
+
+
 @router.post(
     "/new",
     response_model=GameResponse,
@@ -193,8 +289,13 @@ def create_game(
     request: CreateGameRequest,
     service: Annotated[GameAppService, Depends(get_game_service)],
     image_service: Annotated[CardImageService, Depends(get_card_image_service)],
+    actor: Annotated[
+        CurrentActor,
+        Depends(require_permission(Resource.GAMES, Operation.CREATE)),
+    ],
 ) -> GameResponse:
     try:
+        ensure_self_or_admin(actor, request.host_user_id)
         game = service.create_new_game(request)
         return build_game_response(game, image_service)
     except ValueError as ex:
@@ -210,8 +311,13 @@ def join_game(
     request: JoinGameRequest,
     service: Annotated[GameAppService, Depends(get_game_service)],
     image_service: Annotated[CardImageService, Depends(get_card_image_service)],
+    actor: Annotated[
+        CurrentActor,
+        Depends(require_permission(Resource.PLAYERS, Operation.CREATE)),
+    ],
 ) -> GameResponse:
     try:
+        ensure_self_or_admin(actor, request.user_id)
         game = service.join_game(game_id, request.user_id)
         return build_game_response(game, image_service)
     except EntityNotFoundError as ex:
@@ -229,6 +335,10 @@ def get_player_cards(
     player_id: UUID,
     service: Annotated[GameAppService, Depends(get_game_service)],
     image_service: Annotated[CardImageService, Depends(get_card_image_service)],
+    _: Annotated[
+        CurrentActor,
+        Depends(require_permission(Resource.DECK_CARDS, Operation.READ)),
+    ],
 ) -> list[CardResponse]:
     try:
         game = service.get_game(game_id)
@@ -263,6 +373,10 @@ def start_game(
     game_id: UUID,
     service: Annotated[GameAppService, Depends(get_game_service)],
     image_service: Annotated[CardImageService, Depends(get_card_image_service)],
+    _: Annotated[
+        CurrentActor,
+        Depends(require_any_permission(GAMEPLAY_PERMISSION)),
+    ],
 ) -> GameResponse:
     try:
         game = service.start_game(game_id)
@@ -282,6 +396,10 @@ def play_card(
     request: PlayCardRequest,
     service: Annotated[GameAppService, Depends(get_game_service)],
     image_service: Annotated[CardImageService, Depends(get_card_image_service)],
+    _: Annotated[
+        CurrentActor,
+        Depends(require_any_permission(GAMEPLAY_PERMISSION)),
+    ],
 ) -> GameResponse:
     try:
         game = service.play_card(
@@ -308,12 +426,43 @@ def defend(
     request: DefendRequest,
     service: Annotated[GameAppService, Depends(get_game_service)],
     image_service: Annotated[CardImageService, Depends(get_card_image_service)],
+    _: Annotated[
+        CurrentActor,
+        Depends(require_any_permission(GAMEPLAY_PERMISSION)),
+    ],
 ) -> GameResponse:
     try:
         game = service.defend(
             game_id=game_id,
             defender_id=request.player_id,
             card_id=request.card_id,
+        )
+        return build_game_response(game, image_service)
+    except EntityNotFoundError as ex:
+        raise HTTPException(status_code=404, detail=str(ex)) from ex
+    except ValueError as ex:
+        raise HTTPException(status_code=400, detail=str(ex)) from ex
+
+
+@router.post(
+    "/{game_id}/skip-defend",
+    response_model=GameResponse,
+)
+def skip_defend(
+    game_id: UUID,
+    request: EndTurnRequest,  # только player_id нужен
+    service: Annotated[GameAppService, Depends(get_game_service)],
+    image_service: Annotated[CardImageService, Depends(get_card_image_service)],
+    _: Annotated[
+        CurrentActor,
+        Depends(require_any_permission(GAMEPLAY_PERMISSION)),
+    ],
+) -> GameResponse:
+    """Защитник отказывается от защиты — урон применяется немедленно."""
+    try:
+        game = service.skip_defend(
+            game_id=game_id,
+            player_id=request.player_id,
         )
         return build_game_response(game, image_service)
     except EntityNotFoundError as ex:
@@ -331,6 +480,10 @@ def buy_card(
     request: BuyCardRequest,
     service: Annotated[GameAppService, Depends(get_game_service)],
     image_service: Annotated[CardImageService, Depends(get_card_image_service)],
+    _: Annotated[
+        CurrentActor,
+        Depends(require_any_permission(GAMEPLAY_PERMISSION)),
+    ],
 ) -> GameResponse:
     try:
         game = service.buy_card(
@@ -355,6 +508,10 @@ def end_turn(
     request: EndTurnRequest,
     service: Annotated[GameAppService, Depends(get_game_service)],
     image_service: Annotated[CardImageService, Depends(get_card_image_service)],
+    _: Annotated[
+        CurrentActor,
+        Depends(require_any_permission(GAMEPLAY_PERMISSION)),
+    ],
 ) -> GameResponse:
     try:
         game = service.end_turn(
@@ -379,6 +536,10 @@ def finish_game(
     request: FinishGameRequest,
     service: Annotated[GameAppService, Depends(get_game_service)],
     image_service: Annotated[CardImageService, Depends(get_card_image_service)],
+    _: Annotated[
+        CurrentActor,
+        Depends(require_any_permission(GAMEPLAY_PERMISSION)),
+    ],
 ) -> GameResponse:
     try:
         game = service.finish_game(
